@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useReducer } from 'react'
+import { createContext, useContext, useMemo, useReducer, useRef } from 'react'
 import { DEFAULT_PERSON, DEFAULT_TEXT } from '../utils/constants'
 
 /*
@@ -23,7 +23,8 @@ const initialState = {
   },
 
   // Final composited cover
-  finalDataUrl: null,
+  finalDataUrl: null, // object URL of the exported PNG blob
+  finalMeta: null, // { width, height, scale }
 }
 
 function reducer(state, action) {
@@ -69,7 +70,7 @@ function reducer(state, action) {
         },
       }
     case 'SET_FINAL':
-      return { ...state, finalDataUrl: action.dataUrl }
+      return { ...state, finalDataUrl: action.url, finalMeta: action.meta }
     case 'RESET':
       return { ...initialState, layout: {
         person: { ...DEFAULT_PERSON },
@@ -84,6 +85,8 @@ const MagazineContext = createContext(null)
 
 export function MagazineProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
+  // Track the current export object URL so we can revoke it before replacing.
+  const finalUrlRef = useRef(null)
 
   const actions = useMemo(
     () => ({
@@ -93,8 +96,20 @@ export function MagazineProvider({ children }) {
         dispatch({ type: 'SET_PERSON', dataUrl, aspect, processed }),
       updatePersonLayer: (patch) => dispatch({ type: 'UPDATE_PERSON_LAYER', patch }),
       updateTextLayer: (patch) => dispatch({ type: 'UPDATE_TEXT_LAYER', patch }),
-      setFinal: (dataUrl) => dispatch({ type: 'SET_FINAL', dataUrl }),
-      reset: () => dispatch({ type: 'RESET' }),
+      setFinal: (url, meta) => {
+        if (finalUrlRef.current && finalUrlRef.current !== url) {
+          URL.revokeObjectURL(finalUrlRef.current)
+        }
+        finalUrlRef.current = url
+        dispatch({ type: 'SET_FINAL', url, meta })
+      },
+      reset: () => {
+        if (finalUrlRef.current) {
+          URL.revokeObjectURL(finalUrlRef.current)
+          finalUrlRef.current = null
+        }
+        dispatch({ type: 'RESET' })
+      },
     }),
     [],
   )

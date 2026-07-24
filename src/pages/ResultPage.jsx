@@ -9,7 +9,7 @@ import { ROUTES } from '../utils/constants'
 
 export default function ResultPage() {
   const navigate = useNavigate()
-  const { finalDataUrl, name, reset } = useMagazine()
+  const { finalDataUrl, finalMeta, name, reset } = useMagazine()
 
   useEffect(() => {
     if (!finalDataUrl) navigate(ROUTES.upload, { replace: true })
@@ -44,7 +44,9 @@ export default function ResultPage() {
           Your cover is ready
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Exported at full resolution (1500 × 2100). Download or keep editing.
+          {finalMeta
+            ? `Exported as a lossless PNG at ${finalMeta.width} × ${finalMeta.height}. Download or keep editing.`
+            : 'Download or keep editing.'}
         </p>
       </div>
 

@@ -3,6 +3,12 @@ export const COVER_WIDTH = 1500
 export const COVER_HEIGHT = 2100
 export const COVER_RATIO = COVER_WIDTH / COVER_HEIGHT // 5 : 7
 
+// Export quality. The final canvas is rendered at COVER_WIDTH * scale, where the
+// scale is chosen so the (high-res DSLR) subject is drawn at its native pixel
+// density and never downsampled. Capped so we don't blow up memory on tablets.
+// EXPORT_MAX_SCALE = 4 -> up to 6000 x 8400 px PNG.
+export const EXPORT_MAX_SCALE = 4
+
 // Routes (used with createHashRouter)
 export const ROUTES = {
   upload: '/',

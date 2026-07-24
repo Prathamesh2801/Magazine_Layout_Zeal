@@ -46,13 +46,13 @@ export default function EditorPage() {
   const onGenerate = async () => {
     setBusy(true)
     try {
-      const dataUrl = await composeCover({
+      const { url, width, height, scale } = await composeCover({
         bgSrc,
         personSrc: person.dataUrl,
         overlaySrc,
         layout,
       })
-      setFinal(dataUrl)
+      setFinal(url, { width, height, scale })
       navigate(ROUTES.result)
     } catch (err) {
       toast.error(err.message || 'Could not generate the cover.')

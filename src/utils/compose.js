@@ -1,31 +1,52 @@
-import { COVER_WIDTH, COVER_HEIGHT } from './constants'
+import { COVER_WIDTH, COVER_HEIGHT, EXPORT_MAX_SCALE } from './constants'
 import { loadImage } from './image'
 
 /*
-  Renders the four layers to an off-screen canvas at native resolution and
-  returns a PNG data URL. Layer order (back -> front):
+  Composites the four layers to an off-screen canvas and returns a lossless
+  PNG blob (plus an object URL). Layer order (back -> front):
     1. background (bg.png)
     2. person (bg-removed)
     3. name text
     4. overlay frame (overlay.png)
 
-  All transforms are normalised fractions (0..1) of the cover, so this scales
-  perfectly from the on-screen editor to the full 1500x2100 export.
+  Quality: the canvas is rendered at COVER_WIDTH * scale. The scale is derived
+  from the subject's NATIVE resolution so a high-res DSLR photo is drawn at (or
+  near) full pixel density instead of being downsampled to 1500px. All drawing
+  stays in the 1500x2100 coordinate space via ctx.scale(), so the layout maths
+  are unchanged. PNG output is lossless — no quality-degrading compression.
+
+  Returns: { blob, url, width, height, scale }
 */
 export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
-  const canvas = document.createElement('canvas')
-  canvas.width = COVER_WIDTH
-  canvas.height = COVER_HEIGHT
-  const ctx = canvas.getContext('2d')
+  const [bg, overlay, person] = await Promise.all([
+    loadImage(bgSrc),
+    loadImage(overlaySrc),
+    personSrc ? loadImage(personSrc) : Promise.resolve(null),
+  ])
 
-  const [bg, overlay] = await Promise.all([loadImage(bgSrc), loadImage(overlaySrc)])
+  // Choose an export scale that preserves the subject's native detail.
+  let scale = 1
+  if (person) {
+    const renderedWidthAt1x = layout.person.width * COVER_WIDTH // px at 1500-space
+    if (renderedWidthAt1x > 0) {
+      scale = person.naturalWidth / renderedWidthAt1x
+    }
+  }
+  scale = clamp(Math.ceil(scale), 1, EXPORT_MAX_SCALE)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(COVER_WIDTH * scale)
+  canvas.height = Math.round(COVER_HEIGHT * scale)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.scale(scale, scale) // draw everything in 1500x2100 space
 
   // 1. Background
   ctx.drawImage(bg, 0, 0, COVER_WIDTH, COVER_HEIGHT)
 
   // 2. Person
-  if (personSrc) {
-    const person = await loadImage(personSrc)
+  if (person) {
     const aspect = person.naturalWidth / person.naturalHeight || 1
     const w = layout.person.width * COVER_WIDTH
     const h = w / aspect
@@ -60,5 +81,25 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
   // 4. Overlay frame
   ctx.drawImage(overlay, 0, 0, COVER_WIDTH, COVER_HEIGHT)
 
-  return canvas.toDataURL('image/png')
+  const blob = await canvasToBlob(canvas)
+  return {
+    blob,
+    url: URL.createObjectURL(blob),
+    width: canvas.width,
+    height: canvas.height,
+    scale,
+  }
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Failed to export image.'))),
+      'image/png', // lossless
+    )
+  })
+}
+
+function clamp(v, lo, hi) {
+  return Math.min(hi, Math.max(lo, v))
 }
