@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+
+/*
+  Magazine Layout — beige / professional theme
+  A calm, editorial palette: warm paper (beige) base with a muted
+  terracotta/clay accent that complements the orange magazine artwork,
+  plus a deep espresso ink for text.
+*/
+@theme {
+  /* Paper / surfaces */
+  --color-paper: #f7f2e9;
+  --color-paper-100: #f2ebdd;
+  --color-paper-200: #e8dfcb;
+  --color-paper-300: #ddd0b6;
+
+  /* Ink / text */
+  --color-ink: #2b2620;
+  --color-ink-soft: #5c5347;
+  --color-ink-muted: #8a7f6e;
+
+  /* Accent — clay / terracotta (complements the orange cover art) */
+  --color-clay: #c05f3c;
+  --color-clay-hover: #a94e2f;
+  --color-clay-soft: #e7c9ba;
+
+  /* Support — muted sage as the complementary cool tone */
+  --color-sage: #6f7c5a;
+
+  --color-line: #ddd0b6;
+
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+
+  --shadow-soft: 0 1px 2px rgba(43, 38, 32, 0.06), 0 8px 24px rgba(43, 38, 32, 0.08);
+  --shadow-lift: 0 2px 4px rgba(43, 38, 32, 0.08), 0 16px 40px rgba(43, 38, 32, 0.14);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* subtle paper grain */
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(43, 38, 32, 0.035) 1px,
+      transparent 0
+    );
+    background-size: 22px 22px;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Utility: disable text/scroll gestures while dragging layers */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
