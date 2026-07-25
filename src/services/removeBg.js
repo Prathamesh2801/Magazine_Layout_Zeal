@@ -1,6 +1,6 @@
 import axios from "axios";
-import { BASE_URL } from "../config";
-import { blobToDataURL } from "../utils/image";
+import { BASE_URL, BG_REMOVAL_ENABLED } from "../config";
+import { blobToDataURL, fileToDataURL } from "../utils/image";
 
 const BG_REMOVER_URL = `${BASE_URL}:8004/remove-bg`;
 /*
@@ -40,10 +40,20 @@ export async function bgRemover(image) {
 /**
  * Remove the background from an uploaded image.
  *
+ * When BG_REMOVAL_ENABLED is false the remover service is skipped entirely and
+ * the original photo passes through unchanged, so the rest of the flow (editor,
+ * export, upload) keeps working without the API. `processed` tells callers which
+ * of the two happened.
+ *
  * @param {File} file – the original image File
  * @returns {Promise<{ dataUrl: string, processed: boolean }>}
  */
 export async function removeBackground(file) {
+  if (!BG_REMOVAL_ENABLED) {
+    const dataUrl = await fileToDataURL(file);
+    return { dataUrl, processed: false };
+  }
+
   const blob = await bgRemover(file);
   const dataUrl = await blobToDataURL(blob);
   return { dataUrl, processed: true };

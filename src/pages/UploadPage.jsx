@@ -10,6 +10,7 @@ import { useMagazine } from '../context/MagazineContext'
 import { removeBackground } from '../services/removeBg'
 import { fileToDataURL, getAspectRatio } from '../utils/image'
 import { ROUTES } from '../utils/constants'
+import { BG_REMOVAL_ENABLED } from '../config'
 
 export default function UploadPage() {
   const navigate = useNavigate()
@@ -31,17 +32,19 @@ export default function UploadPage() {
     if (!name.trim()) return toast.error('Please enter the cover name.')
 
     setBusy(true)
-    const t = toast.loading('Removing background…')
+    const t = toast.loading(
+      BG_REMOVAL_ENABLED ? 'Removing background…' : 'Preparing photo…',
+    )
     try {
       const { dataUrl, processed } = await removeBackground(file)
       const aspect = await getAspectRatio(dataUrl)
       setPerson(dataUrl, aspect, processed)
       toast.dismiss(t)
-      toast.success('Background removed!')
+      toast.success(processed ? 'Background removed!' : 'Photo ready!')
       navigate(ROUTES.editor)
     } catch (err) {
       toast.dismiss(t)
-      toast.error(err.message || 'Background removal failed.')
+      toast.error(err.message || 'Could not prepare the photo.')
     } finally {
       setBusy(false)
     }
@@ -56,8 +59,9 @@ export default function UploadPage() {
           Create your cover
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Add a photo and a name — we&apos;ll cut out the subject and drop it onto
-          the magazine.
+          {BG_REMOVAL_ENABLED
+            ? 'Add a photo and a name — we’ll cut out the subject and drop it onto the magazine.'
+            : 'Add a photo and a name — we’ll drop it onto the magazine for you to position.'}
         </p>
       </div>
 
@@ -108,10 +112,14 @@ export default function UploadPage() {
                 <>
                   <Spinner size={18} /> Processing…
                 </>
-              ) : (
+              ) : BG_REMOVAL_ENABLED ? (
                 <>
                   <FiScissors size={18} /> Remove background &amp; continue
                   <FiArrowRight size={18} />
+                </>
+              ) : (
+                <>
+                  Continue to editor <FiArrowRight size={18} />
                 </>
               )}
             </Button>

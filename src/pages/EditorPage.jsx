@@ -23,7 +23,7 @@ import {
   DEFAULT_PERSON,
   DEFAULT_TEXT,
 } from '../utils/constants'
-import bgSrc from '../assets/bg.png'
+import bgSrc from '../assets/bg.jpeg'
 import overlaySrc from '../assets/overlay.png'
 
 export default function EditorPage() {
