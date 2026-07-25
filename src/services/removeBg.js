@@ -2,7 +2,7 @@ import axios from "axios";
 import { BASE_URL } from "../config";
 import { blobToDataURL } from "../utils/image";
 
-const BG_REMOVER_URL = `${BASE_URL}/remove-bg`;
+const BG_REMOVER_URL = `${BASE_URL}:8004/remove-bg`;
 /*
   Background-removal service.
 
