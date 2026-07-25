@@ -26,6 +26,10 @@
   /* Support — muted sage as the complementary cool tone */
   --color-sage: #6f7c5a;
 
+  /* Feedback — a deeper red than clay so errors read as errors, not accent */
+  --color-danger: #a8412c;
+  --color-danger-soft: #f0d9d2;
+
   --color-line: #ddd0b6;
 
   --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;

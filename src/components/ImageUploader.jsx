@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import toast from 'react-hot-toast'
 import { FiCamera, FiUploadCloud } from 'react-icons/fi'
 
-const MAX_MB = 12
 const ACCEPTED = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
 
 /*
@@ -23,10 +22,8 @@ export default function ImageUploader({ onSelect }) {
       toast.error('Please choose a PNG, JPG or WebP image.')
       return
     }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      toast.error(`Image is too large (max ${MAX_MB} MB).`)
-      return
-    }
+    // No client-side size cap — DSLR originals are wanted at full resolution.
+    // Any limit is the server's to enforce and report.
     onSelect(file)
   }
 
@@ -69,7 +66,7 @@ export default function ImageUploader({ onSelect }) {
       >
         <FiUploadCloud size={30} className="text-clay" />
         <span className="font-semibold text-ink">Upload image</span>
-        <span className="text-xs text-ink-muted">PNG, JPG or WebP · max {MAX_MB}MB</span>
+        <span className="text-xs text-ink-muted">PNG, JPG or WebP · full resolution</span>
       </button>
     </div>
   )

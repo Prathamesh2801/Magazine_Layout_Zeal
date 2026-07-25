@@ -25,7 +25,17 @@ const initialState = {
   // Final composited cover
   finalDataUrl: null, // object URL of the exported PNG blob
   finalMeta: null, // { width, height, scale }
+
+  // Upload of the final cover to the image API (never blocks the result page)
+  remote: {
+    status: 'idle', // idle | uploading | success | error
+    imagePath: null,
+    downloadUrl: null,
+    error: null,
+  },
 }
+
+const initialRemote = initialState.remote
 
 function reducer(state, action) {
   switch (action.type) {
@@ -71,11 +81,17 @@ function reducer(state, action) {
       }
     case 'SET_FINAL':
       return { ...state, finalDataUrl: action.url, finalMeta: action.meta }
+    case 'SET_REMOTE':
+      return { ...state, remote: { ...state.remote, ...action.patch } }
     case 'RESET':
-      return { ...initialState, layout: {
-        person: { ...DEFAULT_PERSON },
-        text: { ...DEFAULT_TEXT, content: '' },
-      } }
+      return {
+        ...initialState,
+        layout: {
+          person: { ...DEFAULT_PERSON },
+          text: { ...DEFAULT_TEXT, content: '' },
+        },
+        remote: { ...initialRemote },
+      }
     default:
       return state
   }
@@ -103,6 +119,7 @@ export function MagazineProvider({ children }) {
         finalUrlRef.current = url
         dispatch({ type: 'SET_FINAL', url, meta })
       },
+      setRemote: (patch) => dispatch({ type: 'SET_REMOTE', patch }),
       reset: () => {
         if (finalUrlRef.current) {
           URL.revokeObjectURL(finalUrlRef.current)

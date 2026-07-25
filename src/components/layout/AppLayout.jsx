@@ -16,14 +16,44 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-full flex-col">
+      {/*
+        One toast look for the whole app: espresso ink surface on paper text,
+        with the icon carrying the state colour — clay while pending, sage on
+        success, danger on failure. toast.promise() inherits these variants.
+      */}
       <Toaster
         position="top-center"
+        gutter={10}
         toastOptions={{
+          duration: 3200,
           style: {
             background: 'var(--color-ink)',
             color: 'var(--color-paper)',
             borderRadius: '12px',
             fontSize: '14px',
+            fontWeight: 500,
+            padding: '10px 14px',
+            maxWidth: '420px',
+            boxShadow: 'var(--shadow-lift)',
+          },
+          loading: {
+            iconTheme: {
+              primary: 'var(--color-clay)',
+              secondary: 'var(--color-paper-200)',
+            },
+          },
+          success: {
+            iconTheme: {
+              primary: 'var(--color-sage)',
+              secondary: 'var(--color-paper)',
+            },
+          },
+          error: {
+            duration: 5000,
+            iconTheme: {
+              primary: 'var(--color-danger)',
+              secondary: 'var(--color-paper)',
+            },
           },
         }}
       />

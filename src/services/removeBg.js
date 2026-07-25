@@ -1,7 +1,8 @@
-import axios from 'axios'
-import { BG_REMOVER_URL } from '../config'
-import { blobToDataURL } from '../utils/image'
+import axios from "axios";
+import { BASE_URL } from "../config";
+import { blobToDataURL } from "../utils/image";
 
+const BG_REMOVER_URL = `${BASE_URL}/remove-bg`;
 /*
   Background-removal service.
 
@@ -13,27 +14,27 @@ import { blobToDataURL } from '../utils/image'
 
 /** Raw API call — returns the response Blob. */
 export async function bgRemover(image) {
-  const formData = new FormData()
-  formData.append('image', image)
+  const formData = new FormData();
+  formData.append("image", image);
 
   const response = await axios.post(BG_REMOVER_URL, formData, {
-    responseType: 'blob',
+    responseType: "blob",
     validateStatus: () => true,
-  })
+  });
 
   if (response.status < 200 || response.status >= 300) {
     // Error bodies come back as a blob too — surface any text message.
-    let message = `Background removal failed (HTTP ${response.status}).`
+    let message = `Background removal failed (HTTP ${response.status}).`;
     try {
-      const text = await response.data.text()
-      if (text) message = text.slice(0, 200)
+      const text = await response.data.text();
+      if (text) message = text.slice(0, 200);
     } catch {
       /* non-text error body */
     }
-    throw new Error(message)
+    throw new Error(message);
   }
 
-  return response.data
+  return response.data;
 }
 
 /**
@@ -43,7 +44,7 @@ export async function bgRemover(image) {
  * @returns {Promise<{ dataUrl: string, processed: boolean }>}
  */
 export async function removeBackground(file) {
-  const blob = await bgRemover(file)
-  const dataUrl = await blobToDataURL(blob)
-  return { dataUrl, processed: true }
+  const blob = await bgRemover(file);
+  const dataUrl = await blobToDataURL(blob);
+  return { dataUrl, processed: true };
 }

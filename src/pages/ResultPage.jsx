@@ -1,15 +1,25 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { FiDownload, FiEdit2, FiPlus, FiCheckCircle } from 'react-icons/fi'
+import {
+  FiDownload,
+  FiEdit2,
+  FiPlus,
+  FiCheckCircle,
+  FiAlertTriangle,
+  FiLink,
+  FiExternalLink,
+  FiCopy,
+} from 'react-icons/fi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import { useMagazine } from '../context/MagazineContext'
 import { ROUTES } from '../utils/constants'
+import { coverFilename } from '../utils/filename'
 
 export default function ResultPage() {
   const navigate = useNavigate()
-  const { finalDataUrl, finalMeta, name, reset } = useMagazine()
+  const { finalDataUrl, finalMeta, name, remote, reset } = useMagazine()
 
   useEffect(() => {
     if (!finalDataUrl) navigate(ROUTES.upload, { replace: true })
@@ -17,7 +27,8 @@ export default function ResultPage() {
 
   if (!finalDataUrl) return null
 
-  const filename = `${(name || 'maxter-today').trim().toLowerCase().replace(/\s+/g, '-')}-cover.png`
+  const filename = coverFilename(name)
+  const sharedLink = remote?.downloadUrl || remote?.imagePath || null
 
   const download = () => {
     const a = document.createElement('a')
@@ -27,6 +38,15 @@ export default function ResultPage() {
     a.click()
     a.remove()
     toast.success('Cover downloaded!')
+  }
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(sharedLink)
+      toast.success('Link copied!')
+    } catch {
+      toast.error('Could not copy — long-press the link to copy it.')
+    }
   }
 
   const startOver = () => {
@@ -76,6 +96,47 @@ export default function ResultPage() {
           </Button>
         </div>
       </div>
+
+      {/* Upload outcome — informational only, the download above always works. */}
+      {remote?.status === 'success' && sharedLink && (
+        <div className="mt-6 rounded-xl border border-sage/30 bg-sage/10 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <FiLink size={15} className="text-sage" /> Saved online
+          </p>
+          <p className="mt-1 break-all font-mono text-xs text-ink-soft">
+            {sharedLink}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={copyLink}>
+              <FiCopy size={14} /> Copy link
+            </Button>
+            <a
+              href={sharedLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl
+                border border-line px-3 py-1.5 text-sm font-semibold text-ink
+                transition-colors hover:bg-paper-100"
+            >
+              <FiExternalLink size={14} /> Open
+            </a>
+          </div>
+        </div>
+      )}
+
+      {remote?.status === 'error' && (
+        <div className="mt-6 rounded-xl border border-danger/25 bg-danger-soft/50 p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <FiAlertTriangle size={15} className="text-danger" /> Couldn&apos;t
+            save online
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {remote.error} Your cover is finished either way — use{' '}
+            <span className="font-semibold text-ink">Download PNG</span> above to
+            keep it.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

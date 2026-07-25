@@ -7,6 +7,7 @@ import {
   FiType,
   FiDownload,
   FiRotateCcw,
+  FiUploadCloud,
 } from 'react-icons/fi'
 import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
@@ -14,6 +15,8 @@ import Spinner from '../components/ui/Spinner'
 import MagazineCanvas from '../components/MagazineCanvas'
 import { useMagazine } from '../context/MagazineContext'
 import { composeCover } from '../utils/compose'
+import { uploadCoverImage } from '../services/uploadImage'
+import { coverFilename } from '../utils/filename'
 import {
   ROUTES,
   TEXT_COLORS,
@@ -32,9 +35,12 @@ export default function EditorPage() {
     updatePersonLayer,
     updateTextLayer,
     setFinal,
+    setRemote,
   } = useMagazine()
   const [selected, setSelected] = useState('person')
-  const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState('idle') // idle | composing | uploading
+  const [progress, setProgress] = useState(0)
+  const busy = phase !== 'idle'
 
   // Guard: no processed image means the user skipped the upload step.
   useEffect(() => {
@@ -43,21 +49,66 @@ export default function EditorPage() {
 
   if (!person?.dataUrl) return null
 
+  /*
+    Generate = compose locally, then push the PNG to the image API.
+    The upload is best-effort: whatever happens we land on /result, where the
+    cover can always be downloaded straight from the browser.
+  */
   const onGenerate = async () => {
-    setBusy(true)
+    if (busy) return
+
+    setPhase('composing')
+    let composed
     try {
-      const { url, width, height, scale } = await composeCover({
+      composed = await composeCover({
         bgSrc,
         personSrc: person.dataUrl,
         overlaySrc,
         layout,
       })
-      setFinal(url, { width, height, scale })
-      navigate(ROUTES.result)
+      setFinal(composed.url, {
+        width: composed.width,
+        height: composed.height,
+        scale: composed.scale,
+      })
     } catch (err) {
       toast.error(err.message || 'Could not generate the cover.')
+      setPhase('idle')
+      return // nothing to show on /result — stay put so the user can retry
+    }
+
+    setProgress(0)
+    setPhase('uploading')
+    setRemote({ status: 'uploading', imagePath: null, downloadUrl: null, error: null })
+
+    try {
+      const result = await toast.promise(
+        uploadCoverImage(composed.blob, {
+          filename: coverFilename(name),
+          onProgress: setProgress,
+        }),
+        {
+          loading: 'Uploading your cover…',
+          success: 'Cover uploaded!',
+          error: (err) => err?.message || 'Upload failed — download still works.',
+        },
+      )
+      setRemote({
+        status: 'success',
+        imagePath: result.imagePath,
+        downloadUrl: result.downloadUrl,
+        error: null,
+      })
+    } catch (err) {
+      setRemote({
+        status: 'error',
+        imagePath: null,
+        downloadUrl: null,
+        error: err?.message || 'Upload failed.',
+      })
     } finally {
-      setBusy(false)
+      setPhase('idle')
+      navigate(ROUTES.result)
     }
   }
 
@@ -162,25 +213,59 @@ export default function EditorPage() {
 
           <div className="space-y-2.5">
             <Button size="lg" className="w-full" onClick={onGenerate} disabled={busy}>
-              {busy ? (
+              {phase === 'composing' && (
                 <>
                   <Spinner size={18} /> Generating…
                 </>
-              ) : (
+              )}
+              {phase === 'uploading' && (
+                <>
+                  <Spinner size={18} /> Uploading… {progress}%
+                </>
+              )}
+              {phase === 'idle' && (
                 <>
                   <FiDownload size={18} /> Generate cover
                 </>
               )}
             </Button>
+
+            {phase === 'uploading' && (
+              <div>
+                <div
+                  className="h-1.5 w-full overflow-hidden rounded-full bg-paper-200"
+                  role="progressbar"
+                  aria-label="Upload progress"
+                  aria-valuenow={progress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                >
+                  <div
+                    className="h-full rounded-full bg-clay transition-[width] duration-200"
+                    style={{ width: `${Math.max(4, progress)}%` }}
+                  />
+                </div>
+                <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
+                  <FiUploadCloud size={13} /> Saving to the gallery — you can
+                  download it either way.
+                </p>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
+                disabled={busy}
                 onClick={() => navigate(ROUTES.upload)}
               >
                 <FiArrowLeft size={16} /> Back
               </Button>
-              <Button variant="ghost" className="flex-1" onClick={resetLayers}>
+              <Button
+                variant="ghost"
+                className="flex-1"
+                disabled={busy}
+                onClick={resetLayers}
+              >
                 <FiRotateCcw size={16} /> Reset
               </Button>
             </div>
