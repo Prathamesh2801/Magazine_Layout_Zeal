@@ -1,3 +1,5 @@
+import { DEFAULT_COVER_FONT, DEFAULT_TEXT_CASE } from './coverFont'
+
 // Native artwork dimensions of bg.png / overlay.png (portrait magazine cover).
 export const COVER_WIDTH = 1500
 export const COVER_HEIGHT = 2100
@@ -29,6 +31,8 @@ export const DEFAULT_TEXT = {
   y: 0.86,
   fontScale: 0.075, // font size as fraction of cover width
   color: '#ffffff',
+  fontKey: DEFAULT_COVER_FONT, // which face to use — see utils/coverFont.js
+  textCase: DEFAULT_TEXT_CASE, // upper | original | lower — see utils/coverFont.js
 }
 
 // Curated text colors that read well over the warm artwork.

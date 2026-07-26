@@ -1,5 +1,11 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import MovableLayer from './MovableLayer'
+import {
+  applyTextCase,
+  coverFont,
+  coverFontStack,
+  ensureCoverFont,
+} from '../utils/coverFont'
 
 /*
   The four-layer magazine composition, rendered with DOM so the on-screen
@@ -30,11 +36,19 @@ export default function MagazineCanvas({
   className = '',
 }) {
   const containerRef = useRef(null)
-  const text = layout.text?.content?.trim()
+  const fontKey = layout.text?.fontKey
+  // Case is applied to the string (not CSS) so the export matches exactly.
+  const text = applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
+
+  // Kick off the selected name font (see utils/coverFont.js). The browser
+  // re-renders the text by itself once the face lands — no state to track.
+  useEffect(() => {
+    ensureCoverFont(fontKey)
+  }, [fontKey])
 
   const textStyle = {
-    fontFamily: "'Playfair Display', Georgia, serif",
-    fontWeight: 700,
+    fontFamily: coverFontStack(fontKey),
+    fontWeight: coverFont(fontKey).weight,
     fontSize: `${layout.text.fontScale * 100}cqw`,
     color: layout.text.color,
     lineHeight: 1,

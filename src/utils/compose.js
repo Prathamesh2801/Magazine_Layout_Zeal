@@ -1,5 +1,6 @@
 import { COVER_WIDTH, COVER_HEIGHT, EXPORT_MAX_SCALE } from './constants'
 import { loadImage } from './image'
+import { applyTextCase, coverFontShorthand, ensureCoverFont } from './coverFont'
 
 /*
   Composites the four layers to an off-screen canvas and returns a lossless
@@ -22,6 +23,8 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
     loadImage(bgSrc),
     loadImage(overlaySrc),
     personSrc ? loadImage(personSrc) : Promise.resolve(null),
+    // The name font must be decoded BEFORE fillText — canvas never waits.
+    ensureCoverFont(layout.text?.fontKey),
   ])
 
   // Choose an export scale that preserves the subject's native detail.
@@ -56,10 +59,10 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
   }
 
   // 3. Name text
-  const text = layout.text?.content?.trim()
+  const text = applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
   if (text) {
     const fontPx = layout.text.fontScale * COVER_WIDTH
-    ctx.font = `700 ${fontPx}px 'Playfair Display', Georgia, serif`
+    ctx.font = coverFontShorthand(layout.text?.fontKey, fontPx) // utils/coverFont.js
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     const tx = layout.text.x * COVER_WIDTH

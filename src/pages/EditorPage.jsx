@@ -23,6 +23,13 @@ import {
   DEFAULT_PERSON,
   DEFAULT_TEXT,
 } from '../utils/constants'
+import {
+  COVER_FONT_OPTIONS,
+  TEXT_CASE_OPTIONS,
+  applyTextCase,
+  coverFontStack,
+  ensureAllCoverFonts,
+} from '../utils/coverFont'
 import bgSrc from '../assets/bg.jpeg'
 import overlaySrc from '../assets/overlay.png'
 
@@ -46,6 +53,11 @@ export default function EditorPage() {
   useEffect(() => {
     if (!person?.dataUrl) navigate(ROUTES.upload, { replace: true })
   }, [person, navigate])
+
+  // Load every cover font up front so the picker can preview each in its own face.
+  useEffect(() => {
+    ensureAllCoverFonts()
+  }, [])
 
   if (!person?.dataUrl) return null
 
@@ -174,6 +186,59 @@ export default function EditorPage() {
             />
           ) : (
             <div className="space-y-5">
+              <div>
+                <p className="mb-2 text-sm font-semibold text-ink">Font</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {COVER_FONT_OPTIONS.map((font) => (
+                    <button
+                      key={font.key}
+                      type="button"
+                      onClick={() => updateTextLayer({ fontKey: font.key })}
+                      className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                        layout.text.fontKey === font.key
+                          ? 'border-clay bg-clay/10 text-ink'
+                          : 'border-line bg-paper text-ink-soft hover:bg-paper-200'
+                      }`}
+                    >
+                      {/* Each option renders in its own face — pick by eye. */}
+                      <span
+                        className="block truncate text-lg leading-tight"
+                        style={{
+                          fontFamily: coverFontStack(font.key),
+                          fontWeight: font.weight,
+                        }}
+                      >
+                        {applyTextCase(name || 'Aa Bb Cc', layout.text.textCase)}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-ink-muted">
+                        {font.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-semibold text-ink">Letter case</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {TEXT_CASE_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      title={option.hint}
+                      onClick={() => updateTextLayer({ textCase: option.key })}
+                      className={`rounded-xl border px-2 py-2 text-sm font-semibold
+                        transition-colors ${
+                          layout.text.textCase === option.key
+                            ? 'border-clay bg-clay text-white'
+                            : 'border-line bg-paper text-ink-soft hover:bg-paper-200'
+                        }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Control
                 label="Text size"
                 value={layout.text.fontScale}
