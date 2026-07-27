@@ -16,6 +16,8 @@ export const ROUTES = {
   upload: '/',
   editor: '/editor',
   result: '/result',
+  // Standalone display wall — no app chrome, meant for a portrait screen.
+  tv: '/tv',
 }
 
 // Default normalized layout (fractions of the cover container, 0..1).

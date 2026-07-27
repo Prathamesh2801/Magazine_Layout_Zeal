@@ -1,5 +1,6 @@
-import axios from 'axios'
-import { IMAGE_API_URL, UPLOAD_TIMEOUT_MS } from '../config'
+import axios from "axios";
+import { IMAGE_API_URL, UPLOAD_TIMEOUT_MS } from "../config";
+import { toReachableUrl } from "./apiOrigin";
 
 /*
   Cover upload service (MiniStack image API).
@@ -10,23 +11,6 @@ import { IMAGE_API_URL, UPLOAD_TIMEOUT_MS } from '../config'
   `validateStatus: () => true` lets us read the JSON body on non-2xx replies
   (the API answers 201 on success) instead of throwing a generic axios error.
 */
-
-const API_ORIGIN = new URL(IMAGE_API_URL).origin
-
-/*
-  The API echoes back links on its own internal host (http://ministack.test/...),
-  which nothing outside that machine can resolve. Re-point them at the origin we
-  actually reached so the links work from wherever this app is served.
-*/
-function toReachableUrl(raw) {
-  if (!raw) return null
-  try {
-    const u = new URL(raw)
-    return `${API_ORIGIN}${u.pathname}${u.search}`
-  } catch {
-    return raw
-  }
-}
 
 /**
  * Upload a generated cover.
@@ -39,14 +23,14 @@ function toReachableUrl(raw) {
  * @returns {Promise<{ message: string, imagePath: string|null, downloadUrl: string|null }>}
  */
 export async function uploadCoverImage(blob, opts = {}) {
-  const { filename = 'cover.png', onProgress, signal } = opts
+  const { filename = "cover.png", onProgress, signal } = opts;
 
-  if (!blob) throw new Error('Nothing to upload.')
+  if (!blob) throw new Error("Nothing to upload.");
 
-  const formData = new FormData()
-  formData.append('Image_File', blob, filename)
+  const formData = new FormData();
+  formData.append("file", blob, filename);
 
-  let response
+  let response;
   try {
     response = await axios.post(IMAGE_API_URL, formData, {
       validateStatus: () => true,
@@ -54,35 +38,35 @@ export async function uploadCoverImage(blob, opts = {}) {
       signal,
       onUploadProgress: (e) => {
         if (onProgress && e.total) {
-          onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)))
+          onProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)));
         }
       },
-    })
+    });
   } catch (err) {
     // Network down, CORS blocked, timeout, aborted — no HTTP reply to inspect.
-    if (err?.code === 'ECONNABORTED') {
-      throw new Error('Upload timed out.', { cause: err })
+    if (err?.code === "ECONNABORTED") {
+      throw new Error("Upload timed out.", { cause: err });
     }
-    throw new Error(err?.message || 'Could not reach the image server.', {
+    throw new Error(err?.message || "Could not reach the image server.", {
       cause: err,
-    })
+    });
   }
 
-  const data = response.data
+  const data = response.data;
   const ok =
     response.status >= 200 &&
     response.status < 300 &&
-    String(data?.Status).toLowerCase() === 'true'
+    String(data?.Status).toLowerCase() === "true";
 
   if (!ok) {
     throw new Error(
-      data?.Message || `Upload failed (HTTP ${response.status}).`,
-    )
+      data?.Message || `Upload failed (HTTP ${response.status}).`
+    );
   }
 
   return {
-    message: data.Message || 'File uploaded.',
+    message: data.Message || "File uploaded.",
     imagePath: toReachableUrl(data.Image_Path),
     downloadUrl: toReachableUrl(data.Download_Image),
-  }
+  };
 }

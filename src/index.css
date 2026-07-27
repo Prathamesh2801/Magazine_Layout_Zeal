@@ -32,6 +32,11 @@
 
   --color-line: #ddd0b6;
 
+  /* Stage — the dark venue surface behind the /tv display wall. The editor is
+     lit like paper; the wall is lit like a room with a screen in it. */
+  --color-stage: #14100c;
+  --color-stage-soft: #211a13;
+
   --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
 
@@ -71,4 +76,95 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+}
+
+/*
+  TV wall (/tv) — the carousel transition.
+
+  Both halves of a change run at once: the outgoing cover leaves to the left as
+  the incoming one arrives from the right, so the two read as a single slide
+  rather than a swap. Duration is mirrored by TV_TRANSITION_MS in config.js,
+  which is when the outgoing frame gets unmounted.
+*/
+@keyframes tv-slide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(58%, 0, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes tv-slide-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-58%, 0, 0) scale(0.94);
+  }
+}
+
+.tv-slide-in {
+  animation: tv-slide-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.tv-slide-out {
+  animation: tv-slide-out 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Ambient wash — the current cover, blurred, lighting the wall behind itself. */
+@keyframes tv-ambient-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.4;
+  }
+}
+
+/* Matches the slide duration so the wash reaches full strength exactly as the
+   outgoing cover's wash unmounts — otherwise the wall dips mid-change. */
+.tv-ambient {
+  animation: tv-ambient-in 900ms ease-out both;
+}
+
+/* Time remaining on the current cover. */
+@keyframes tv-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.tv-progress {
+  transform-origin: left center;
+  animation: tv-progress linear both;
+}
+
+@keyframes tv-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* No travel for viewers who ask for less motion — the cover simply fades up. */
+@media (prefers-reduced-motion: reduce) {
+  .tv-slide-in {
+    animation: tv-fade-in 300ms ease both;
+  }
+
+  .tv-slide-out,
+  .tv-progress {
+    animation: none;
+    opacity: 0;
+  }
 }
