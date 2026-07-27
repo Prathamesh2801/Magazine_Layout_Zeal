@@ -1,5 +1,5 @@
 // App configuration — single outward source of truth for external endpoints.
-export const BASE_URL = "http://localhost";
+export const BASE_URL = "http://192.168.0.88";
 
 /*
   Background-removal feature flag.
@@ -10,10 +10,10 @@ export const BASE_URL = "http://localhost";
   `true` once the service is available — the API client in
   src/services/removeBg.js stays wired up either way.
 */
-export const BG_REMOVAL_ENABLED = false;
+export const BG_REMOVAL_ENABLED = true;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
-export const IMAGE_API_URL = `${BASE_URL}/Ministack/Scenesnap_UK/API/api.php`;
+export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;
 
 // Generated covers can be several MB at high export scales — give the upload room.
 export const UPLOAD_TIMEOUT_MS = 120000;
@@ -24,7 +24,7 @@ export const UPLOAD_TIMEOUT_MS = 120000;
   The server pushes whichever cover is currently "playing" — in practice the
   most recent successful upload from api.php above.
 */
-export const SSE_URL = `${BASE_URL}/Ministack/Scenesnap_UK/API/sse.php`;
+export const SSE_URL = `${BASE_URL}/Ministack/Birthday/API/sse.php`;
 
 // TV wall: how many covers the reel remembers, and how long each one holds the
 // screen before the carousel advances.
