@@ -233,6 +233,8 @@ export const KEYS = {
 
   // Anywhere — abandon this session and return to the attract screen.
   quit: ["Escape"],
+  // Anywhere — show or hide the on-screen key legend. See KIOSK_HINTS_VISIBLE.
+  toggleHints: ["h", "?"],
   // Anywhere — toggle the browser into real full screen. Kiosk browsers are
   // usually launched that way already, but a laptop driving the panel for the
   // first time is not, and this saves hunting for F11 behind the app.
@@ -252,6 +254,22 @@ export const KEYS = {
 export const KEY_MOVE_STEP = 0.012;
 export const KEY_SIZE_STEP = 0.02;
 export const KEY_FINE_MULTIPLIER = 0.25;
+
+/*
+  Whether the on-screen key legend starts visible.
+
+  Two audiences, one screen. To a guest standing in front of the panel this is a
+  display — a legend of keyboard shortcuts along the bottom is clutter over their
+  own face, and they cannot reach the keyboard anyway. To the colleague actually
+  running the session it is the manual. So it defaults to hidden and `toggleHints`
+  (H) brings it back at any point, on any screen.
+
+  Deliberately NOT persisted. An unattended display must come up clean after a
+  power cut or a reload, so a reload always returns to whatever is set here — an
+  operator cannot accidentally leave the legend switched on for a whole evening.
+  Set this true for a run where staff are still learning the keys.
+*/
+export const KIOSK_HINTS_VISIBLE = false;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
 export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;

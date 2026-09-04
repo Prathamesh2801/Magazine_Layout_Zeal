@@ -53,6 +53,7 @@ src/
     useCoverReel.js           accumulates the SSE covers into a localStorage-backed reel
     useCamera.js              getUserMedia lifecycle — owns and always releases the stream
     useKeyBindings.js         window keydown -> action, resolved against KEYS in config
+    useHintsVisible.js        the one boolean behind the show/hide-keys toggle
   utils/
     constants.js              cover dimensions, routes, default layout, text palette
     coverFont.js              font registry, letter-case modes, FontFace loading
@@ -295,10 +296,22 @@ it can be bound three times without ambiguity (one screen is mounted at a time):
 
 | Screen | Keys |
 | --- | --- |
-| Attract | `Enter` start · `F` real full screen (any screen) |
+| Attract | `Enter` start · `F` real full screen (any screen) · `H` show/hide the legend (any screen) |
 | Live camera | `Enter` shutter · `C` switch camera · `Esc` end session |
 | Review | `Enter` use this photo · `R` retake · `Esc` end session |
 | Editor | arrows / `WASD` move · `+` `-` resize (`Shift` for fine steps) · `R` reset · `Enter` generate & download · `Esc` abandon the session |
+
+The legend has two audiences and is **hidden by default** (`KIOSK_HINTS_VISIBLE`):
+to a guest standing in front of the panel it is clutter over their own face, and
+they cannot reach the keyboard anyway; to the colleague running the session it is
+the manual. `H` toggles it on any screen. The state lives in
+[hooks/useHintsVisible.js](src/hooks/useHintsVisible.js) as a module-level store
+rather than in `MagazineContext` — `reset()` must not switch it off underneath
+someone mid-explanation — and is deliberately **not persisted**, so an unattended
+display always comes back from a reload in its configured state. The gate is
+inside `KeyHints` itself, not in `KioskStage`, because `CameraCapture` renders the
+legend directly and a gate one level up would have left the camera screen showing
+its keys after everything else was hidden.
 
 Two rules when extending this. **A screen must not bind two actions to the same
 key** — resolution falls back to registration order, which no reader should have

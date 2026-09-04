@@ -221,6 +221,7 @@ export default function UploadPage() {
         hints={[
           { keys: ["Enter"], label: "Start" },
           { keys: ["F"], label: "Full screen" },
+          { keys: ["H"], label: "Hide these" },
         ]}
       >
         {welcome}

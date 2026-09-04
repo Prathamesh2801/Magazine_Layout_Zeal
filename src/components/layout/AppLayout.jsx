@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { useKeyBindings } from '../../hooks/useKeyBindings'
+import { toggleHints } from '../../hooks/useHintsVisible'
 import { IMMERSIVE_KIOSK } from '../../config'
 
 /*
@@ -43,7 +44,15 @@ export default function AppLayout() {
     }
   }
 
-  useKeyBindings({ fullscreen: toggleFullscreen }, IMMERSIVE_KIOSK)
+  /*
+    Both of these are bound at the shell rather than per page so they work on
+    every screen of a session — the attract screen, mid-countdown, the editor,
+    and the finale, which registers no keys of its own.
+  */
+  useKeyBindings(
+    { fullscreen: toggleFullscreen, toggleHints },
+    IMMERSIVE_KIOSK,
+  )
 
   return (
     <div className="flex min-h-full flex-col">

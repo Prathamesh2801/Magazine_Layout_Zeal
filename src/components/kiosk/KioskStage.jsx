@@ -1,3 +1,4 @@
+import { useHintsVisible } from '../../hooks/useHintsVisible'
 import { COVER_RATIO } from '../../utils/constants'
 import ambientDefault from '../../assets/bg.jpeg'
 
@@ -98,13 +99,22 @@ export default function KioskStage({
 
   Labels are written by the caller but the KEYS they show come from config, so
   a remapped kiosk cannot end up advertising a key that no longer works.
+
+  Visibility is decided HERE rather than by each caller, and rather than by
+  KioskStage — CameraCapture renders this component directly, outside the stage,
+  so a gate one level up would have let the camera screen keep showing its
+  legend after the operator hid everything else. Callers describe their keys;
+  whether those keys are on screen is not theirs to decide.
 */
 export function KeyHints({ hints }) {
+  const visible = useHintsVisible()
+  if (!visible) return null
+
   return (
     <div
       className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-wrap
         items-center justify-center gap-x-[3vmin] gap-y-[1.2vmin]
-        bg-gradient-to-t from-black/75 via-black/40 to-transparent
+        bg-linear-to-t from-black/75 via-black/40 to-transparent
         px-[4vmin] pt-[10vmin] pb-[3vmin]"
     >
       {hints.filter(Boolean).map((hint) => (
