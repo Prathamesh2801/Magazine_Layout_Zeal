@@ -15,7 +15,7 @@ import CameraCapture from "../components/CameraCapture";
 import { useMagazine } from "../context/MagazineContext";
 import { removeBackground } from "../services/removeBg";
 import { fileToDataURL, getAspectRatio } from "../utils/image";
-import { ROUTES } from "../utils/constants";
+import { COVER_RATIO, ROUTES } from "../utils/constants";
 import {
   BG_REMOVAL_ENABLED,
   CAMERA_ENABLED,
@@ -176,11 +176,21 @@ export default function UploadPage() {
           />
         ) : (
           <form onSubmit={onSubmit} className="space-y-5">
-            <div className="relative overflow-hidden rounded-xl border border-line bg-paper-200">
+            {/*
+              Same portrait frame as the live camera, at the same ratio: the
+              review step is the shot the guest just took, so it must not
+              suddenly letterbox into a short landscape box. object-cover keeps
+              it filling the frame exactly as the preview did.
+            */}
+            <div
+              className="relative mx-auto w-full overflow-hidden rounded-2xl
+                border border-line bg-ink shadow-lift"
+              style={{ aspectRatio: COVER_RATIO }}
+            >
               <img
                 src={original.dataUrl}
                 alt="Selected preview"
-                className="mx-auto max-h-72 w-auto object-contain"
+                className="h-full w-full object-cover"
               />
               <button
                 type="button"
