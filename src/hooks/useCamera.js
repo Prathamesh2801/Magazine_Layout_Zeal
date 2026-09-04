@@ -4,6 +4,7 @@ import {
   CAMERA_HEIGHT,
   CAMERA_WIDTH,
 } from '../config'
+import { COVER_RATIO } from '../utils/constants'
 
 /*
   The webcam, as a hook.
@@ -166,9 +167,21 @@ export function useCamera() {
   useEffect(() => stop, [stop])
 
   /*
-    Grab the current frame at the stream's NATIVE resolution — not the size the
-    preview happens to be on screen — so the subject reaches the export scaler in
-    utils/compose.js with all its detail intact.
+    Grab what the guest actually framed.
+
+    The webcam hands us a LANDSCAPE frame (1920x1080), but the preview shows it
+    in a portrait box at the cover's ratio with object-cover — so most of the
+    width is cropped away on screen and never seen. Capturing the raw frame
+    would therefore hand back a wide shot nobody posed for: the guest lines up a
+    portrait and receives a landscape.
+
+    So the same crop the preview performs is applied here, centred, which is
+    exactly what object-cover does: fill the box on the tighter axis and trim the
+    overflow off the other. What is on screen is what gets taken.
+
+    The crop is still made at the stream's NATIVE resolution, not the on-screen
+    preview size, so the subject reaches the export scaler in utils/compose.js
+    with all its detail intact.
 
     The preview may be mirrored for the user's comfort; the capture never is, or
     any text in the scene would come out backwards.
@@ -179,15 +192,30 @@ export function useCamera() {
     if (!video || !track) throw new Error('The camera is not running.')
 
     const settings = track.getSettings()
-    const width = settings.width || video.videoWidth
-    const height = settings.height || video.videoHeight
-    if (!width || !height) throw new Error('The camera is not ready yet.')
+    const sourceW = settings.width || video.videoWidth
+    const sourceH = settings.height || video.videoHeight
+    if (!sourceW || !sourceH) throw new Error('The camera is not ready yet.')
+
+    /*
+      The object-cover window, in source pixels. A feed wider than the cover
+      (the usual case: 16:9 into a portrait frame) is trimmed left and right;
+      a feed that is proportionally taller is trimmed top and bottom instead.
+    */
+    let width = sourceW
+    let height = Math.round(sourceW / COVER_RATIO)
+    if (height > sourceH) {
+      height = sourceH
+      width = Math.round(sourceH * COVER_RATIO)
+    }
+    const sx = Math.round((sourceW - width) / 2)
+    const sy = Math.round((sourceH - height) / 2)
 
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0, width, height)
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(video, sx, sy, width, height, 0, 0, width, height)
 
     const blob = await new Promise((resolve, reject) =>
       canvas.toBlob(

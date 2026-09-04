@@ -256,6 +256,14 @@ so a denied camera stays denied until cleared in site settings; and device
 enumerated only after the stream opens. Resolution is requested as `ideal`, never
 `exact` — an exact constraint a camera cannot meet fails the whole call.
 
+**The capture is cropped to what the preview showed.** A webcam delivers a
+landscape frame (1920×1080) but the preview is a portrait box at `COVER_RATIO`
+using `object-cover`, so most of the width is trimmed on screen. `capture()`
+applies that same centred crop in source pixels — otherwise the guest frames a
+portrait and receives the full wide shot, which is not what they posed for. The
+crop is taken at the stream's native resolution, so detail still reaches the
+export scaler intact.
+
 **The capture is never mirrored** — `drawImage(video)` copies the camera's real
 view, because flipping the saved image would reverse any text in the scene
 (signage, lettering on clothing) in the exported cover. `CAMERA_MIRROR_PREVIEW`
