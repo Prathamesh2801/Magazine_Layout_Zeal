@@ -220,6 +220,47 @@
   animation: reveal-pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/*
+  Camera shutter — a webcam makes no sound, so the capture needs a visual
+  "click". A quick white wash that clears itself is enough to tell the guest the
+  photo was taken.
+*/
+@keyframes camera-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.camera-flash {
+  animation: camera-flash 320ms ease-out both;
+  pointer-events: none;
+}
+
+/*
+  The finish hold (CoverFinale). Drains left-to-right over exactly
+  INSTANT_FINISH_HOLD_MS — the duration is set inline from config, so this
+  keyframe carries only the motion — letting the guest see the session ending
+  rather than being surprised by the reset.
+*/
+@keyframes finale-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.finale-timer {
+  transform-origin: left center;
+  animation-name: finale-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
 /* No travel for viewers who ask for less motion — the cover simply fades up. */
 @media (prefers-reduced-motion: reduce) {
   .tv-slide-in {
@@ -239,4 +280,14 @@
   .reveal-tick {
     animation: tv-fade-in 300ms ease both;
   }
+
+  /* The shutter flash stays — it is feedback, not decoration — but softens. */
+  .camera-flash {
+    animation: camera-flash 200ms linear both;
+  }
+
+  /*
+    The finish timer is information, not decoration: it says how long the kiosk
+    will hold before resetting, so it keeps running at its real duration.
+  */
 }

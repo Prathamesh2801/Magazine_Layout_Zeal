@@ -30,7 +30,12 @@ import {
   coverFontStack,
   ensureAllCoverFonts,
 } from '../utils/coverFont'
-import { TEXT_ENABLED, UPLOAD_ENABLED } from '../config'
+import CoverFinale from '../components/CoverFinale'
+import {
+  INSTANT_FINISH,
+  TEXT_ENABLED,
+  UPLOAD_ENABLED,
+} from '../config'
 import bgSrc from '../assets/bg.jpeg'
 import overlaySrc from '../assets/overlay.png'
 
@@ -44,12 +49,15 @@ export default function EditorPage() {
     updateTextLayer,
     setFinal,
     setRemote,
+    reset,
   } = useMagazine()
   // With the headline off (TEXT_ENABLED, src/config.js) the person is the only
   // editable layer, so the selection never leaves it.
   const [selected, setSelected] = useState('person')
   const [phase, setPhase] = useState('idle') // idle | composing | uploading
   const [progress, setProgress] = useState(0)
+  // The finished cover, held up full screen while INSTANT_FINISH runs its hold.
+  const [finaleUrl, setFinaleUrl] = useState(null)
   const busy = phase !== 'idle'
 
   // Guard: no processed image means the user skipped the upload step.
@@ -74,6 +82,33 @@ export default function EditorPage() {
     server to post to, so we compose and go — no upload phase, no progress bar,
     no "saved online" panel waiting on the other side.
   */
+  /*
+    Hand the PNG to the browser. Built from the blob rather than the object URL
+    already in context so the file is saved even if that URL is revoked by a
+    reset racing this download.
+  */
+  const saveCover = (blob) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = coverFilename(name)
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    // Give the browser a moment to take the file before the URL goes away.
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  }
+
+  /*
+    End of session: clear everything the guest entered and return to the attract
+    screen, where the camera is off until someone taps Start.
+  */
+  const finishSession = () => {
+    setFinaleUrl(null)
+    reset()
+    navigate(ROUTES.upload, { replace: true })
+  }
+
   const onGenerate = async () => {
     if (busy) return
 
@@ -95,6 +130,18 @@ export default function EditorPage() {
       toast.error(err.message || 'Could not generate the cover.')
       setPhase('idle')
       return // nothing to show on /result — stay put so the user can retry
+    }
+
+    /*
+      INSTANT_FINISH: the kiosk finishes here instead of on /result. Hand the
+      guest the PNG straight away, hold the cover up for a beat, then reset for
+      the next person — one cover per session, no extra screen to dismiss.
+    */
+    if (INSTANT_FINISH) {
+      saveCover(composed.blob)
+      setFinaleUrl(composed.url)
+      setPhase('idle')
+      return
     }
 
     if (!UPLOAD_ENABLED) {
@@ -150,6 +197,11 @@ export default function EditorPage() {
     toast('Layout reset', { icon: '↺' })
   }
 
+  // Takes over the whole viewport — the editor behind it is finished business.
+  if (finaleUrl) {
+    return <CoverFinale src={finaleUrl} onDone={finishSession} />
+  }
+
   return (
     <div>
       <div className="mb-5 text-center">
@@ -163,9 +215,14 @@ export default function EditorPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Canvas */}
-        <div className="mx-auto w-full max-w-md lg:max-w-none">
+      {/*
+        Portrait (the kiosk TV) keeps a single column with the cover on top —
+        the `landscape:` guard matters because a 1080x1920 panel is wider than
+        the `lg` breakpoint and would otherwise be handed a cramped sidebar.
+      */}
+      <div className="grid grid-cols-1 gap-5 landscape:lg:grid-cols-[1fr_340px] landscape:lg:gap-6">
+        {/* Canvas — capped so it cannot crowd out the controls on a tall panel. */}
+        <div className="mx-auto w-full max-w-[min(72vh,28rem)] landscape:lg:max-w-none">
           <MagazineCanvas
             interactive
             bgSrc={bgSrc}
@@ -180,7 +237,7 @@ export default function EditorPage() {
         </div>
 
         {/* Controls */}
-        <Card className="h-fit p-5">
+        <Card className="mx-auto h-fit w-full max-w-md p-4 sm:p-5 landscape:lg:max-w-none">
           {/* Layer switcher — a switcher only makes sense with two layers to
               switch between, so it goes with the headline (TEXT_ENABLED). */}
           {TEXT_ENABLED && (
@@ -315,7 +372,8 @@ export default function EditorPage() {
               )}
               {phase === 'idle' && (
                 <>
-                  <FiDownload size={18} /> Generate cover
+                  <FiDownload size={18} />
+                  {INSTANT_FINISH ? 'Generate & download' : 'Generate cover'}
                 </>
               )}
             </Button>

@@ -49,7 +49,9 @@ src/
     removeBg.js               background remover (honours BG_REMOVAL_ENABLED)
     uploadImage.js            POST the exported PNG to the MiniStack gallery API
     coverStream.js            SSE client + frame parser for the live feed
-  hooks/useCoverReel.js       accumulates the SSE covers into a localStorage-backed reel
+  hooks/
+    useCoverReel.js           accumulates the SSE covers into a localStorage-backed reel
+    useCamera.js              getUserMedia lifecycle — owns and always releases the stream
   utils/
     constants.js              cover dimensions, routes, default layout, text palette
     coverFont.js              font registry, letter-case modes, FontFace loading
@@ -59,7 +61,8 @@ src/
   components/
     MagazineCanvas.jsx        the 4-layer composition (interactive or static)
     MovableLayer.jsx          reusable drag + resize via Pointer Events
-    ImageUploader.jsx         camera + file inputs
+    ImageUploader.jsx         source chooser — camera and/or file, per the flags
+    CameraCapture.jsx         live webcam preview, countdown + shutter
     ui/                       Button, Card, Spinner
     layout/                   AppLayout (header/Toaster/footer), Stepper
   pages/                      UploadPage, EditorPage, ResultPage, TvPage
@@ -85,7 +88,9 @@ with a paired slide-in/slide-out transition.
 
 ### Layer model — the core invariant
 
-The cover is **1500 × 2100 (5:7)**. Four layers, back to front:
+The cover is **1500 × 2271**, which is the aspect ratio of the current
+`overlay.png` (2336 × 3536 → 0.6606) — *not* a textbook 5:7. Four layers, back
+to front:
 
 1. background (`assets/bg.jpeg`)
 2. person (background-removed) — movable
@@ -147,11 +152,19 @@ This is the common task. In order of frequency:
 1. **Host / endpoints** — `BASE_URL` in [config.js](src/config.js). Everything
    else derives from it. Never hardcode a URL elsewhere.
 2. **Artwork** — replace [src/assets/bg.jpeg](src/assets/bg.jpeg) and
-   [src/assets/overlay.png](src/assets/overlay.png) (keep them 5:7).
+   [src/assets/overlay.png](src/assets/overlay.png).
    [src/assets/OLD/](src/assets/OLD/) is the previous event's art; leave it be.
-   If the new artwork is a different ratio, update `COVER_WIDTH`/`COVER_HEIGHT`
-   in [utils/constants.js](src/utils/constants.js) — `COVER_RATIO` and the whole
-   layout system follow automatically.
+   **`COVER_WIDTH`/`COVER_HEIGHT` in
+   [utils/constants.js](src/utils/constants.js) must match the new overlay's
+   aspect ratio** — derive it as
+   `COVER_HEIGHT = round(COVER_WIDTH * overlayHeight / overlayWidth)`.
+   `COVER_RATIO` and the whole layout system follow automatically, including
+   both preview frames. Getting this wrong is silent and ugly: the preview fits
+   the overlay with `object-cover` (so it **crops**, top and bottom) while the
+   export stretches it to the cover dimensions (so it **distorts**) — and the
+   two then disagree, which is the exact failure this architecture exists to
+   prevent. `bg.jpeg` is a photographic backdrop and can be a hair off; the
+   overlay cannot.
 3. **Fonts** — drop the file in [src/assets/fonts/](src/assets/fonts/), add one
    entry to `COVER_FONTS` in [utils/coverFont.js](src/utils/coverFont.js), point
    `DEFAULT_COVER_FONT` at it. The editor's picker updates itself. `weightRange`
@@ -182,11 +195,75 @@ must keep working after any edit that touches them.**
 | `BG_REMOVAL_ENABLED` | The self-hosted remover is often down. The original photo passes straight through to the editor; the upload page's copy and button change accordingly. |
 | `TEXT_ENABLED` | The headline is gone end to end: no name field on upload (and no name validation), no Name tab or font/case/colour controls in the editor, no text layer in either renderer, and the export composites three layers instead of four. |
 | `TV_ENABLED` | The `/tv` route is not registered at all, so `/#/tv` does not resolve and nothing ever opens an `EventSource`. The studio flow is untouched. |
+| `UPLOAD_ENABLED` | Nothing is POSTed to the gallery API. The editor composes and goes straight to `/result`, where the cover is downloaded from the browser. This is the offline-kiosk setup. |
+| `INSTANT_FINISH` | The separate `/result` page is used again: generate navigates there, offering download / keep editing / start over. With it **true** (the kiosk default) the editor finishes in place — download, hold the cover for `INSTANT_FINISH_HOLD_MS`, reset to the attract screen. |
+| `CAMERA_ENABLED` | The webcam option disappears from the upload page. |
+| `FILE_UPLOAD_ENABLED` | The "choose a file" option disappears. With the camera on and this off, the page opens straight into the live preview — the kiosk default. Turning **both** off would strand the page, so the file picker is restored as a fallback. |
 
 When adding anything text-related, gate it on `TEXT_ENABLED` in **both**
 renderers — `MagazineCanvas.jsx` and `compose.js` — or the preview and the
 exported PNG will disagree, which is the one failure this architecture is built
 to prevent.
+
+### The kiosk
+
+The studio runs on a **vertical portrait touch TV** (1080 × 1920) driven by a
+laptop, so the whole studio flow is designed for that panel first:
+
+- **Centred on both axes, never scrolling.** `AppLayout`'s `main` is a
+  `flex-1 justify-center` column, which is what keeps content in the middle of a
+  tall panel instead of stacking from the top and leaving dead space below.
+- **`landscape:lg:` gates the two-column layouts**, not `lg:` alone. A
+  1080×1920 panel is *wider* than the `lg` breakpoint, so a bare `lg:` would
+  hand the portrait kiosk a cramped desktop sidebar. Any new multi-column
+  arrangement in the studio needs the same guard.
+- **The attract screen sizes in `vmin`/`clamp()`**, the way `/tv` does — it is
+  read from across a room but must stay sane in a laptop tab.
+- **No header.** A guest walking up needs the one thing they came to do, not app
+  chrome and a progress stepper.
+
+**A kiosk session is one cover, start to finish.** With `INSTANT_FINISH` the
+guest never sees `/result`: *Generate & download* composes, saves the PNG, and
+[components/CoverFinale.jsx](src/components/CoverFinale.jsx) holds the cover full
+screen for `INSTANT_FINISH_HOLD_MS` before resetting to the attract screen. The
+finale is deliberately **not interactive** — a guest who walks away mid-hold must
+not strand the kiosk on a screen that needs a tap, so the reset is on a timer and
+the draining bar exists to show the wait is finite. `/result` and its route stay
+wired up for the non-kiosk flow.
+
+**The camera only runs during a session.** `UploadPage` holds a `started` flag:
+until someone taps *Start*, `CameraCapture` is not mounted and no stream exists.
+This is both a privacy property (no camera streaming to an empty room) and the
+reason the permission prompt lands on a real user gesture, which is where
+browsers most reliably allow it. Ending a session unmounts `CameraCapture`, and
+`useCamera`'s cleanup is what actually stops the stream — so **any new exit path
+must unmount it, not just hide it**.
+
+### The camera
+
+Photos come from `getUserMedia`, never `<input capture>`. `capture` is only a
+hint to a *mobile* OS to open its camera app; on the desktop browser driving the
+kiosk TV it is ignored entirely, so an external USB webcam can only be reached
+through `getUserMedia`. [hooks/useCamera.js](src/hooks/useCamera.js) owns the
+`MediaStream` and every exit path goes through its `stop()` — a stream left
+running holds the camera's LED on and locks the device against other apps.
+
+Three things constrain it: `getUserMedia` needs a **secure context**, so the
+kiosk must be served from `localhost` (or https) — over `http://192.168.x.x` it
+does not prompt, it simply does not exist; permission is remembered per origin,
+so a denied camera stays denied until cleared in site settings; and device
+*labels* are empty until permission is granted once, which is why cameras are
+enumerated only after the stream opens. Resolution is requested as `ideal`, never
+`exact` — an exact constraint a camera cannot meet fails the whole call.
+
+**The capture is never mirrored** — `drawImage(video)` copies the camera's real
+view, because flipping the saved image would reverse any text in the scene
+(signage, lettering on clothing) in the exported cover. `CAMERA_MIRROR_PREVIEW`
+therefore defaults to **false**: a mirrored preview feels natural but does not
+match the resulting photo, and that mismatch reads as a bug to the guest, who
+lines up against one image and receives its opposite. Turn it on only if the
+mirror is worth that gap. The frame is grabbed at the stream's native resolution
+so the subject reaches the export scaler at full detail.
 
 Note that the flags do not shrink the bundle: `TvPage` and the ~1 MB of fonts are
 static imports, so Vite still ships them when the features are off. That is the

@@ -1,9 +1,21 @@
 import { DEFAULT_COVER_FONT, DEFAULT_TEXT_CASE } from './coverFont'
 
-// Native artwork dimensions of bg.png / overlay.png (portrait magazine cover).
+/*
+  Native artwork dimensions (portrait magazine cover).
+
+  These MUST match the aspect ratio of overlay.png, which is the frame drawn on
+  top of everything: the DOM preview fits it with object-cover and the export
+  stretches it to these exact dimensions, so a mismatch shows up as the frame
+  being cropped on screen AND distorted in the PNG — and, worse, the two
+  disagreeing with each other.
+
+  Current art is 2336 x 3536 (ratio 0.6606), so the cover is 1500 x 2271 rather
+  than a textbook 5:7. When you re-skin, re-derive the height from the new
+  overlay: COVER_HEIGHT = round(COVER_WIDTH * overlayHeight / overlayWidth).
+*/
 export const COVER_WIDTH = 1500
-export const COVER_HEIGHT = 2100
-export const COVER_RATIO = COVER_WIDTH / COVER_HEIGHT // 5 : 7
+export const COVER_HEIGHT = 2271
+export const COVER_RATIO = COVER_WIDTH / COVER_HEIGHT
 
 // Export quality. The final canvas is rendered at COVER_WIDTH * scale, where the
 // scale is chosen so the (high-res DSLR) subject is drawn at its native pixel

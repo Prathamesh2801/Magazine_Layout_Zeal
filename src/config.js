@@ -1,5 +1,6 @@
 // App configuration — single outward source of truth for external endpoints.
-export const BASE_URL = "http://192.168.1.3";
+// export const BASE_URL = "http://192.168.1.3";
+export const BASE_URL = "http://127.0.0.1";
 
 /*
   Background-removal feature flag.
@@ -56,6 +57,90 @@ export const TV_ENABLED = false;
   the server is serving, so a wall with nothing being uploaded stays empty.
 */
 export const UPLOAD_ENABLED = false;
+
+/*
+  Where the photo comes from. Two independent switches — the upload page shows
+  whichever sources are on, so either alone gives a single-purpose screen and
+  both together give the guest a choice.
+
+  CAMERA_ENABLED opens a live webcam preview in the page via getUserMedia and
+  grabs the frame to a canvas. This is the kiosk path: an external USB webcam on
+  a laptop driving the portrait TV. Note it is deliberately NOT the old
+  <input capture> approach — `capture` is only a hint to mobile OSes to launch
+  their built-in camera app, and on a desktop browser it does nothing at all, so
+  a USB webcam can only be reached through getUserMedia.
+
+  FILE_UPLOAD_ENABLED is the ordinary "choose a file" picker. Turn it off on the
+  kiosk, where there is no keyboard, no file system worth browsing, and the
+  webcam is the only sensible source.
+
+  Turning both off would leave no way to add a photo, so the upload page falls
+  back to the file picker and says so rather than showing a dead end.
+*/
+export const CAMERA_ENABLED = true;
+export const FILE_UPLOAD_ENABLED = false;
+
+/*
+  Requested webcam resolution. The browser treats these as an ideal, not a
+  guarantee: it picks the closest mode the device actually supports, so an
+  unusual camera simply returns something near this rather than failing.
+
+  1080p to match the external webcam being used. The capture is taken at the
+  stream's real resolution (whatever that turns out to be), so the subject keeps
+  its full detail into the export scaler in utils/compose.js.
+*/
+export const CAMERA_WIDTH = 1920;
+export const CAMERA_HEIGHT = 1080;
+
+/*
+  Which camera to prefer when several are attached. A USB webcam on a laptop
+  usually enumerates alongside the built-in one, so "environment" asks for the
+  rear/external device where the browser can tell them apart. Set to "user" for
+  a selfie-style front camera. The picker in the UI can override this at runtime
+  when more than one camera is present.
+*/
+export const CAMERA_FACING = "environment";
+
+/*
+  Countdown before the shutter fires, in seconds. Gives the guest time to pose
+  after tapping — set to 0 to capture the instant the button is pressed.
+*/
+export const CAMERA_COUNTDOWN_S = 3;
+
+/*
+  Mirror the on-screen preview horizontally.
+
+  A mirrored preview feels natural when you are looking at yourself, but it does
+  NOT match the photo that gets taken: the capture is always the camera's real
+  view, because mirroring the saved image would reverse any text in the scene
+  (signage, lettering on clothing) in the exported cover.
+
+  That gap is why this defaults to false — with it off, what the guest lines up
+  in the preview is exactly what lands on the cover. Set it true only if you
+  would rather have the mirror and accept that the photo comes out flipped
+  relative to what was on screen.
+*/
+export const CAMERA_MIRROR_PREVIEW = false;
+
+/*
+  Skip the separate result page and finish inside the editor.
+
+  A kiosk session is one cover per guest, so the extra screen is a step nobody
+  needs: "Generate cover" composes, downloads the PNG, holds the finished cover
+  up as a full-screen celebration for INSTANT_FINISH_HOLD_MS, then returns to the
+  attract screen ready for the next person.
+
+  Set to false to restore the old flow, where /result offers download, keep
+  editing and start over — the page and its route stay wired up either way.
+*/
+export const INSTANT_FINISH = true;
+
+/*
+  How long the finished cover stays on screen before the kiosk resets, in ms.
+  Long enough to admire it and see the download land; short enough that the next
+  guest is not left waiting. Tune to taste.
+*/
+export const INSTANT_FINISH_HOLD_MS = 5000;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
 export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;

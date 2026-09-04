@@ -6,6 +6,7 @@ import {
   coverFontStack,
   ensureCoverFont,
 } from '../utils/coverFont'
+import { COVER_RATIO } from '../utils/constants'
 import { TEXT_ENABLED } from '../config'
 
 /*
@@ -68,7 +69,9 @@ export default function MagazineCanvas({
       ref={containerRef}
       className={`relative mx-auto w-full overflow-hidden rounded-lg bg-paper-200
         shadow-lift ${className}`}
-      style={{ aspectRatio: '5 / 7', containerType: 'inline-size' }}
+      // Driven by COVER_RATIO so the preview frame always matches the artwork
+      // the export is composited against — never hardcode the ratio here.
+      style={{ aspectRatio: COVER_RATIO, containerType: 'inline-size' }}
       onPointerDown={interactive ? () => onSelect?.(null) : undefined}
     >
       {/* 1. Background */}

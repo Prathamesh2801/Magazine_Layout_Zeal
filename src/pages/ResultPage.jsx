@@ -94,7 +94,7 @@ export default function ResultPage() {
     the cover.
   */
   return (
-    <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-center lg:max-w-5xl">
+    <div className="mx-auto flex w-full max-w-3xl flex-col justify-center landscape:lg:max-w-5xl">
       <div className="reveal-head mb-6 flex flex-col items-center text-center sm:mb-8">
         <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-sage/15 text-sage">
           <FiCheck size={26} className="reveal-tick" />
@@ -109,11 +109,11 @@ export default function ResultPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 items-center gap-6 sm:gap-8
-        lg:grid-cols-[minmax(0,380px)_1fr]">
+      <div className="grid grid-cols-1 items-center gap-5 sm:gap-6
+        landscape:lg:grid-cols-[minmax(0,380px)_1fr] landscape:lg:gap-8">
         {/* The hero — lifts in on its own before the controls arrive. */}
-        <Card className="reveal-cover mx-auto w-full max-w-[min(78vw,26rem)]
-          overflow-hidden p-2 lg:max-w-none">
+        <Card className="reveal-cover mx-auto w-full max-w-[min(64vh,24rem)]
+          overflow-hidden p-2 landscape:lg:max-w-none">
           <img
             src={finalDataUrl}
             alt={`${name || 'Magazine'} cover`}
@@ -121,7 +121,7 @@ export default function ResultPage() {
           />
         </Card>
 
-        <div className="reveal-actions mx-auto w-full max-w-md space-y-3 lg:max-w-none">
+        <div className="reveal-actions mx-auto w-full max-w-md space-y-3 landscape:lg:max-w-none">
           <Button
             size="lg"
             className={`w-full transition-colors duration-300 ${

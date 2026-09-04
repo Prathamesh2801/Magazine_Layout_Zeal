@@ -1,19 +1,19 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { TbBook2 } from 'react-icons/tb'
-import { ROUTES } from '../../utils/constants'
-import Stepper from './Stepper'
 
-const STEP_BY_PATH = {
-  [ROUTES.upload]: 0,
-  [ROUTES.editor]: 1,
-  [ROUTES.result]: 2,
-}
+/*
+  The studio shell.
 
+  Built for a vertical portrait kiosk TV: the app owns the whole screen, so the
+  content is centred on BOTH axes and the page never scrolls. `min-h-full` +
+  `flex-1` on the main region is what stops the layout collecting dead space at
+  the bottom — the content sits in the middle of whatever height the panel has,
+  rather than stacking from the top.
+
+  The header is intentionally absent on the kiosk: a guest walking up needs the
+  one thing they are here to do, not app chrome and a progress stepper.
+*/
 export default function AppLayout() {
-  const { pathname } = useLocation()
-  const step = STEP_BY_PATH[pathname] ?? 0
-
   return (
     <div className="flex min-h-full flex-col">
       {/*
@@ -58,7 +58,7 @@ export default function AppLayout() {
         }}
       />
 
-      <header className="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur-md">
+      {/* <header className="sticky top-0 z-20 border-b border-line bg-paper/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-clay text-white">
             <TbBook2 size={20} />
@@ -74,13 +74,21 @@ export default function AppLayout() {
         <div className="border-t border-line px-4 py-3 sm:hidden">
           <Stepper current={step} />
         </div>
-      </header>
+      </header> */}
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
+      {/*
+        Centred on both axes. `min-h-0` lets the flex child actually shrink, so
+        a tall composition scrolls inside the region instead of pushing the
+        footer off a 1920px-high panel.
+      */}
+      <main
+        className="mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col
+          justify-center px-5 py-6 sm:py-8"
+      >
         <Outlet />
       </main>
 
-      <footer className="border-t border-line py-4 text-center text-xs text-ink-muted">
+      <footer className="shrink-0 border-t border-line py-3 text-center text-xs text-ink-muted">
         Design your cover · Beige Editorial Studio
       </footer>
     </div>
