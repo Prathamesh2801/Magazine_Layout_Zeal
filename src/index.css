@@ -156,6 +156,70 @@
   }
 }
 
+/*
+  Result page (/result) — the reveal.
+
+  The finished cover is the payoff, so it is staged rather than dumped on
+  screen: the heading settles first, the cover lifts in under it, and the
+  controls fade up last. The delays are what make it read as one motion
+  instead of three things appearing at once.
+*/
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The cover gets a touch of scale the others don't — it is the hero. */
+@keyframes reveal-lift {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* A confirmation tick that lands rather than fades — used on the success
+   badge and again inside the download button once the file is saved. */
+@keyframes reveal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.reveal-head {
+  animation: reveal-rise 550ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.reveal-cover {
+  animation: reveal-lift 750ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+.reveal-actions {
+  animation: reveal-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 320ms both;
+}
+
+.reveal-tick {
+  animation: reveal-pop 450ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* No travel for viewers who ask for less motion — the cover simply fades up. */
 @media (prefers-reduced-motion: reduce) {
   .tv-slide-in {
@@ -166,5 +230,13 @@
   .tv-progress {
     animation: none;
     opacity: 0;
+  }
+
+  /* The reveal keeps its staging, but loses the travel and the overshoot. */
+  .reveal-head,
+  .reveal-cover,
+  .reveal-actions,
+  .reveal-tick {
+    animation: tv-fade-in 300ms ease both;
   }
 }

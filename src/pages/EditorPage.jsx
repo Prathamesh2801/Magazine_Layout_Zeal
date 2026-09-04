@@ -30,6 +30,7 @@ import {
   coverFontStack,
   ensureAllCoverFonts,
 } from '../utils/coverFont'
+import { TEXT_ENABLED, UPLOAD_ENABLED } from '../config'
 import bgSrc from '../assets/bg.jpeg'
 import overlaySrc from '../assets/overlay.png'
 
@@ -44,6 +45,8 @@ export default function EditorPage() {
     setFinal,
     setRemote,
   } = useMagazine()
+  // With the headline off (TEXT_ENABLED, src/config.js) the person is the only
+  // editable layer, so the selection never leaves it.
   const [selected, setSelected] = useState('person')
   const [phase, setPhase] = useState('idle') // idle | composing | uploading
   const [progress, setProgress] = useState(0)
@@ -54,9 +57,10 @@ export default function EditorPage() {
     if (!person?.dataUrl) navigate(ROUTES.upload, { replace: true })
   }, [person, navigate])
 
-  // Load every cover font up front so the picker can preview each in its own face.
+  // Load every cover font up front so the picker can preview each in its own
+  // face. No picker, nothing to preload.
   useEffect(() => {
-    ensureAllCoverFonts()
+    if (TEXT_ENABLED) ensureAllCoverFonts()
   }, [])
 
   if (!person?.dataUrl) return null
@@ -65,6 +69,10 @@ export default function EditorPage() {
     Generate = compose locally, then push the PNG to the image API.
     The upload is best-effort: whatever happens we land on /result, where the
     cover can always be downloaded straight from the browser.
+
+    On an offline kiosk (UPLOAD_ENABLED === false, src/config.js) there is no
+    server to post to, so we compose and go — no upload phase, no progress bar,
+    no "saved online" panel waiting on the other side.
   */
   const onGenerate = async () => {
     if (busy) return
@@ -87,6 +95,12 @@ export default function EditorPage() {
       toast.error(err.message || 'Could not generate the cover.')
       setPhase('idle')
       return // nothing to show on /result — stay put so the user can retry
+    }
+
+    if (!UPLOAD_ENABLED) {
+      setPhase('idle')
+      navigate(ROUTES.result)
+      return
     }
 
     setProgress(0)
@@ -126,7 +140,13 @@ export default function EditorPage() {
 
   const resetLayers = () => {
     updatePersonLayer({ ...DEFAULT_PERSON })
-    updateTextLayer({ x: DEFAULT_TEXT.x, y: DEFAULT_TEXT.y, fontScale: DEFAULT_TEXT.fontScale })
+    if (TEXT_ENABLED) {
+      updateTextLayer({
+        x: DEFAULT_TEXT.x,
+        y: DEFAULT_TEXT.y,
+        fontScale: DEFAULT_TEXT.fontScale,
+      })
+    }
     toast('Layout reset', { icon: '↺' })
   }
 
@@ -137,7 +157,9 @@ export default function EditorPage() {
           Compose your cover
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Drag to move · pull the corner handle to resize. Tap a layer to select it.
+          {TEXT_ENABLED
+            ? 'Drag to move · pull the corner handle to resize. Tap a layer to select it.'
+            : 'Drag to move · pull the corner handle to resize.'}
         </p>
       </div>
 
@@ -159,23 +181,26 @@ export default function EditorPage() {
 
         {/* Controls */}
         <Card className="h-fit p-5">
-          {/* Layer switcher */}
-          <div className="mb-5 grid grid-cols-2 gap-2">
-            <LayerTab
-              active={selected === 'person'}
-              icon={<FiImage size={16} />}
-              label="Photo"
-              onClick={() => setSelected('person')}
-            />
-            <LayerTab
-              active={selected === 'text'}
-              icon={<FiType size={16} />}
-              label="Name"
-              onClick={() => setSelected('text')}
-            />
-          </div>
+          {/* Layer switcher — a switcher only makes sense with two layers to
+              switch between, so it goes with the headline (TEXT_ENABLED). */}
+          {TEXT_ENABLED && (
+            <div className="mb-5 grid grid-cols-2 gap-2">
+              <LayerTab
+                active={selected === 'person'}
+                icon={<FiImage size={16} />}
+                label="Photo"
+                onClick={() => setSelected('person')}
+              />
+              <LayerTab
+                active={selected === 'text'}
+                icon={<FiType size={16} />}
+                label="Name"
+                onClick={() => setSelected('text')}
+              />
+            </div>
+          )}
 
-          {selected === 'person' ? (
+          {!TEXT_ENABLED || selected === 'person' ? (
             <Control
               label="Photo size"
               value={layout.person.width}

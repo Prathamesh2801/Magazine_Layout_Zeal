@@ -1,4 +1,5 @@
 import { COVER_WIDTH, COVER_HEIGHT, EXPORT_MAX_SCALE } from './constants'
+import { TEXT_ENABLED } from '../config'
 import { loadImage } from './image'
 import { applyTextCase, coverFontShorthand, ensureCoverFont } from './coverFont'
 
@@ -24,7 +25,8 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
     loadImage(overlaySrc),
     personSrc ? loadImage(personSrc) : Promise.resolve(null),
     // The name font must be decoded BEFORE fillText — canvas never waits.
-    ensureCoverFont(layout.text?.fontKey),
+    // Nothing to decode when the headline is off.
+    TEXT_ENABLED ? ensureCoverFont(layout.text?.fontKey) : null,
   ])
 
   // Choose an export scale that preserves the subject's native detail.
@@ -58,8 +60,11 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
     ctx.drawImage(person, cx - w / 2, cy - h / 2, w, h)
   }
 
-  // 3. Name text
-  const text = applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
+  // 3. Name text — skipped entirely when the headline is switched off
+  //    (TEXT_ENABLED, src/config.js), so the export matches the editor.
+  const text = TEXT_ENABLED
+    ? applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
+    : null
   if (text) {
     const fontPx = layout.text.fontScale * COVER_WIDTH
     ctx.font = coverFontShorthand(layout.text?.fontKey, fontPx) // utils/coverFont.js

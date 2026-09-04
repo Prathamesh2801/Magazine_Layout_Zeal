@@ -6,6 +6,7 @@ import {
   coverFontStack,
   ensureCoverFont,
 } from '../utils/coverFont'
+import { TEXT_ENABLED } from '../config'
 
 /*
   The four-layer magazine composition, rendered with DOM so the on-screen
@@ -38,12 +39,17 @@ export default function MagazineCanvas({
   const containerRef = useRef(null)
   const fontKey = layout.text?.fontKey
   // Case is applied to the string (not CSS) so the export matches exactly.
-  const text = applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
+  // With the headline switched off (TEXT_ENABLED, src/config.js) there is no
+  // text layer at all — the same condition guards utils/compose.js, so the
+  // preview and the exported PNG stay in step.
+  const text = TEXT_ENABLED
+    ? applyTextCase(layout.text?.content?.trim(), layout.text?.textCase)
+    : null
 
   // Kick off the selected name font (see utils/coverFont.js). The browser
   // re-renders the text by itself once the face lands — no state to track.
   useEffect(() => {
-    ensureCoverFont(fontKey)
+    if (TEXT_ENABLED) ensureCoverFont(fontKey)
   }, [fontKey])
 
   const textStyle = {

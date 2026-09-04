@@ -10,7 +10,7 @@ import { useMagazine } from '../context/MagazineContext'
 import { removeBackground } from '../services/removeBg'
 import { fileToDataURL, getAspectRatio } from '../utils/image'
 import { ROUTES } from '../utils/constants'
-import { BG_REMOVAL_ENABLED } from '../config'
+import { BG_REMOVAL_ENABLED, TEXT_ENABLED } from '../config'
 
 export default function UploadPage() {
   const navigate = useNavigate()
@@ -29,7 +29,9 @@ export default function UploadPage() {
   const onSubmit = async (e) => {
     e.preventDefault()
     if (!file || !original) return toast.error('Please add a photo first.')
-    if (!name.trim()) return toast.error('Please enter the cover name.')
+    // Only a required field while the cover actually carries a headline.
+    if (TEXT_ENABLED && !name.trim())
+      return toast.error('Please enter the cover name.')
 
     setBusy(true)
     const t = toast.loading(
@@ -60,8 +62,8 @@ export default function UploadPage() {
         </h2>
         <p className="mt-1 text-sm text-ink-soft">
           {BG_REMOVAL_ENABLED
-            ? 'Add a photo and a name — we’ll cut out the subject and drop it onto the magazine.'
-            : 'Add a photo and a name — we’ll drop it onto the magazine for you to position.'}
+            ? `Add a photo${TEXT_ENABLED ? ' and a name' : ''} — we’ll cut out the subject and drop it onto the magazine.`
+            : `Add a photo${TEXT_ENABLED ? ' and a name' : ''} — we’ll drop it onto the magazine for you to position.`}
         </p>
       </div>
 
@@ -87,25 +89,28 @@ export default function UploadPage() {
               </button>
             </div>
 
-            <div>
-              <label htmlFor="cover-name" className="mb-1.5 block text-sm font-semibold text-ink">
-                Cover name
-              </label>
-              <input
-                id="cover-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Alex Rivera"
-                maxLength={40}
-                className="w-full rounded-xl border border-line bg-paper px-4 py-3
-                  text-ink placeholder:text-ink-muted focus:border-clay
-                  focus:outline-none focus:ring-2 focus:ring-clay/40"
-              />
-              <p className="mt-1 text-xs text-ink-muted">
-                Shown as the headline over your photo.
-              </p>
-            </div>
+            {/* Headline field — only when the cover carries one (TEXT_ENABLED). */}
+            {TEXT_ENABLED && (
+              <div>
+                <label htmlFor="cover-name" className="mb-1.5 block text-sm font-semibold text-ink">
+                  Cover name
+                </label>
+                <input
+                  id="cover-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Alex Rivera"
+                  maxLength={40}
+                  className="w-full rounded-xl border border-line bg-paper px-4 py-3
+                    text-ink placeholder:text-ink-muted focus:border-clay
+                    focus:outline-none focus:ring-2 focus:ring-clay/40"
+                />
+                <p className="mt-1 text-xs text-ink-muted">
+                  Shown as the headline over your photo.
+                </p>
+              </div>
+            )}
 
             <Button type="submit" size="lg" className="w-full" disabled={busy}>
               {busy ? (
