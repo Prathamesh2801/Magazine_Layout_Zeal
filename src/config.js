@@ -269,7 +269,7 @@ export const KEY_FINE_MULTIPLIER = 0.25;
   operator cannot accidentally leave the legend switched on for a whole evening.
   Set this true for a run where staff are still learning the keys.
 */
-export const KIOSK_HINTS_VISIBLE = false;
+export const KIOSK_HINTS_VISIBLE = true;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
 export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;
