@@ -40,6 +40,15 @@ export const DEFAULT_PERSON = {
   width: 0.6, // width as fraction of cover width (height derives from image aspect)
 }
 
+/*
+  How small and how large the subject may be scaled, as a fraction of the cover
+  width. Shared by every control that resizes it — the editor's slider, the
+  corner handle in MovableLayer, and the keyboard steps in the immersive kiosk —
+  so the layer cannot be pushed past a bound by one route that another forbids.
+*/
+export const PERSON_MIN_WIDTH = 0.1
+export const PERSON_MAX_WIDTH = 1.6
+
 export const DEFAULT_TEXT = {
   x: 0.5,
   y: 0.86,

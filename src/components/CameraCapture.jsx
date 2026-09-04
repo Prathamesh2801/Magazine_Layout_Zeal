@@ -3,6 +3,8 @@ import { FiCamera, FiRefreshCw, FiX, FiAlertTriangle } from 'react-icons/fi'
 import Button from './ui/Button'
 import Spinner from './ui/Spinner'
 import { useCamera } from '../hooks/useCamera'
+import { useKeyBindings } from '../hooks/useKeyBindings'
+import { KeyHints } from './kiosk/KioskStage'
 import { COVER_RATIO } from '../utils/constants'
 import { CAMERA_COUNTDOWN_S, CAMERA_MIRROR_PREVIEW } from '../config'
 
@@ -16,8 +18,15 @@ import { CAMERA_COUNTDOWN_S, CAMERA_MIRROR_PREVIEW } from '../config'
 
   The preview is mirrored (CAMERA_MIRROR_PREVIEW) because people expect a mirror
   when facing a screen; the captured frame is never mirrored — see useCamera.
+
+  `chromeless` is the immersive kiosk (IMMERSIVE_KIOSK, src/config.js): the
+  video fills a frame the CALLER owns — KioskStage, at the same COVER_RATIO —
+  and the shutter, the camera switch and cancel move from buttons onto the
+  keyboard. The video, the guides, the countdown and the flash are identical in
+  both modes on purpose; only the furniture around them differs, so there is no
+  second preview path that could drift away from the one the capture crops to.
 */
-export default function CameraCapture({ onCapture, onCancel }) {
+export default function CameraCapture({ onCapture, onCancel, chromeless = false }) {
   const { videoRef, status, error, devices, deviceId, start, stop, capture } =
     useCamera()
 
@@ -84,7 +93,129 @@ export default function CameraCapture({ onCapture, onCancel }) {
     if (next) start(next.deviceId)
   }
 
+  const cancel = () => {
+    stop()
+    onCancel?.()
+  }
+
+  /*
+    The kiosk's controls. The error card gets its own map — there is no shutter
+    to fire, so the same key that would have taken the photo retries the camera
+    instead, which is the only useful thing to do from there.
+  */
+  useKeyBindings(
+    status === 'error'
+      ? { shutter: () => start(), quit: () => onCancel?.() }
+      : {
+          shutter: onShutter,
+          switchCamera: devices.length > 1 ? switchCamera : undefined,
+          quit: onCancel ? cancel : undefined,
+        },
+    chromeless,
+  )
+
+  // The legend under the preview. Built from what is actually available: no
+  // switch key is advertised when there is only one camera attached.
+  const hints =
+    countdown !== null
+      ? [{ keys: ['Esc'], label: 'Cancel' }]
+      : [
+          { keys: ['Enter'], label: 'Take photo' },
+          devices.length > 1 && { keys: ['C'], label: 'Switch camera' },
+          onCancel && { keys: ['Esc'], label: 'Cancel' },
+        ]
+
+  /*
+    The picture itself — video, guides, the starting spinner, the countdown and
+    the shutter flash. Identical in both modes: the kiosk changes what surrounds
+    the preview, never the preview, because this is the exact frame the capture
+    is cropped from.
+  */
+  const preview = (
+    <>
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className="absolute inset-0 h-full w-full object-cover"
+        style={CAMERA_MIRROR_PREVIEW ? { transform: 'scaleX(-1)' } : undefined}
+      />
+
+      {/* Framing guides — subtle, and never in the captured frame. */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-x-[8%] inset-y-[6%] rounded-xl border border-paper/25" />
+      </div>
+
+      {status === 'starting' && (
+        /*
+          Sized in vmin only on the kiosk: in the windowed studio this sits in a
+          card a few hundred pixels wide, where a 6vmin spinner on a large
+          monitor would be comically outsized.
+        */
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center bg-ink/80 text-paper ${
+            chromeless ? 'gap-[2vmin]' : 'gap-3'
+          }`}
+        >
+          {chromeless ? (
+            <Spinner size="max(2rem,6vmin)" thickness="max(2px,0.5vmin)" />
+          ) : (
+            <Spinner size={26} />
+          )}
+          <p
+            className={`font-medium ${chromeless ? 'text-kiosk-base' : 'text-sm'}`}
+          >
+            Starting the camera…
+          </p>
+        </div>
+      )}
+
+      {countdown !== null && countdown > 0 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-ink/25">
+          <span
+            key={countdown}
+            className="reveal-tick font-display text-[28vmin] leading-none font-bold text-paper drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
+          >
+            {countdown}
+          </span>
+        </div>
+      )}
+
+      {/* The shutter "click", since a webcam makes no sound. */}
+      {flash && <div className="absolute inset-0 bg-paper camera-flash" />}
+    </>
+  )
+
   if (status === 'error') {
+    /*
+      On the kiosk the failure has to own the screen — there is no page behind
+      it to fall back to, and an operator glancing at the panel from across the
+      room needs to see that it is the camera and not the app that is down.
+    */
+    if (chromeless) {
+      return (
+        <>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-[2vmin] bg-stage px-[8vmin] text-center">
+            <span className="flex aspect-square w-[max(3rem,9vmin)] items-center justify-center rounded-full bg-danger/20 text-danger">
+              <FiAlertTriangle className="h-[45%] w-[45%]" />
+            </span>
+            <p className="font-display text-kiosk-xl font-bold text-paper">
+              Camera unavailable
+            </p>
+            <p className="max-w-[28ch] text-kiosk-base text-paper/70">
+              {error?.message}
+            </p>
+          </div>
+          <KeyHints
+            hints={[
+              { keys: ['Enter'], label: 'Try again' },
+              onCancel && { keys: ['Esc'], label: 'Back' },
+            ]}
+          />
+        </>
+      )
+    }
+
     return (
       <div className="rounded-2xl border border-danger/25 bg-danger-soft/40 p-6 text-center">
         <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-danger/10 text-danger">
@@ -108,6 +239,20 @@ export default function CameraCapture({ onCapture, onCancel }) {
     )
   }
 
+  /*
+    Kiosk: no buttons at all. The caller has already opened a COVER_RATIO frame
+    that fills the panel, so the preview simply fills it and the legend explains
+    the keys — which is the whole of the interface at this step.
+  */
+  if (chromeless) {
+    return (
+      <>
+        {preview}
+        <KeyHints hints={hints} />
+      </>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div
@@ -115,41 +260,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
         // Same ratio as the cover, so what the guest frames is what they get.
         style={{ aspectRatio: COVER_RATIO }}
       >
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          className="h-full w-full object-cover"
-          style={
-            CAMERA_MIRROR_PREVIEW ? { transform: 'scaleX(-1)' } : undefined
-          }
-        />
-
-        {/* Framing guides — subtle, and never in the captured frame. */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-x-[8%] inset-y-[6%] rounded-xl border border-paper/25" />
-        </div>
-
-        {status === 'starting' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-ink/80 text-paper">
-            <Spinner size={26} />
-            <p className="text-sm font-medium">Starting the camera…</p>
-          </div>
-        )}
-
-        {countdown !== null && countdown > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-ink/25">
-            <span
-              key={countdown}
-              className="reveal-tick font-display text-[28vmin] leading-none font-bold text-paper drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
-            >
-              {countdown}
-            </span>
-          </div>
-        )}
-
-        {/* The shutter "click", since a webcam makes no sound. */}
-        {flash && <div className="absolute inset-0 bg-paper camera-flash" />}
+        {preview}
       </div>
 
       <div className="flex items-center justify-center gap-2">
@@ -176,15 +287,7 @@ export default function CameraCapture({ onCapture, onCancel }) {
         )}
 
         {onCancel && (
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => {
-              stop()
-              onCancel()
-            }}
-            aria-label="Close camera"
-          >
+          <Button variant="ghost" size="lg" onClick={cancel} aria-label="Close camera">
             <FiX size={18} />
           </Button>
         )}

@@ -52,6 +52,7 @@ src/
   hooks/
     useCoverReel.js           accumulates the SSE covers into a localStorage-backed reel
     useCamera.js              getUserMedia lifecycle — owns and always releases the stream
+    useKeyBindings.js         window keydown -> action, resolved against KEYS in config
   utils/
     constants.js              cover dimensions, routes, default layout, text palette
     coverFont.js              font registry, letter-case modes, FontFace loading
@@ -63,6 +64,8 @@ src/
     MovableLayer.jsx          reusable drag + resize via Pointer Events
     ImageUploader.jsx         source chooser — camera and/or file, per the flags
     CameraCapture.jsx         live webcam preview, countdown + shutter
+    CoverFinale.jsx           the full-screen finish hold (INSTANT_FINISH)
+    kiosk/KioskStage.jsx      full-bleed immersive surface + the on-screen key legend
     ui/                       Button, Card, Spinner
     layout/                   AppLayout (header/Toaster/footer), Stepper
   pages/                      UploadPage, EditorPage, ResultPage, TvPage
@@ -185,7 +188,7 @@ This is the common task. In order of frequency:
 
 ### Feature flags
 
-Three switches in [config.js](src/config.js) turn whole features on and off.
+The switches in [config.js](src/config.js) turn whole features on and off.
 They are runtime constants, deliberately: an operator flips one and reloads, with
 no rebuild-time coupling. **Every one of them has two live branches, and both
 must keep working after any edit that touches them.**
@@ -199,6 +202,7 @@ must keep working after any edit that touches them.**
 | `INSTANT_FINISH` | The separate `/result` page is used again: generate navigates there, offering download / keep editing / start over. With it **true** (the kiosk default) the editor finishes in place — download, hold the cover for `INSTANT_FINISH_HOLD_MS`, reset to the attract screen. |
 | `CAMERA_ENABLED` | The webcam option disappears from the upload page. |
 | `FILE_UPLOAD_ENABLED` | The "choose a file" option disappears. With the camera on and this off, the page opens straight into the live preview — the kiosk default. Turning **both** off would strand the page, so the file picker is restored as a fallback. |
+| `IMMERSIVE_KIOSK` | The ordinary windowed studio: cards on paper, a footer, buttons and sliders beside the artwork, every action reachable by tap or click. With it **true** (the kiosk default) the studio goes edge to edge and keyboard-only — see [The immersive shell](#the-immersive-shell). |
 
 When adding anything text-related, gate it on `TEXT_ENABLED` in **both**
 renderers — `MagazineCanvas.jsx` and `compose.js` — or the preview and the
@@ -227,9 +231,21 @@ guest never sees `/result`: *Generate & download* composes, saves the PNG, and
 [components/CoverFinale.jsx](src/components/CoverFinale.jsx) holds the cover full
 screen for `INSTANT_FINISH_HOLD_MS` before resetting to the attract screen. The
 finale is deliberately **not interactive** — a guest who walks away mid-hold must
-not strand the kiosk on a screen that needs a tap, so the reset is on a timer and
-the draining bar exists to show the wait is finite. `/result` and its route stay
-wired up for the non-kiosk flow.
+not strand the kiosk on a screen that needs a tap, so the reset is always on a
+timer. `/result` and its route stay wired up for the non-kiosk flow.
+
+The finale has the same two shells as the rest of the studio. Windowed, it is a
+staged panel — cover, label, badge, and a draining bar showing the wait is
+finite. Under `IMMERSIVE_KIOSK` it renders into **the same `KioskStage` frame the
+editor's canvas just occupied**, so generating swaps the composition for the
+finished PNG with no layout movement at all, and the bar and captions are gone:
+at that size they were furniture around a picture that had already said
+everything. Four keyframes in index.css carry the state instead — `finale-reveal`
+(the payoff), `finale-sheen` (one sweep while the file is written),
+`finale-tick` (it landed, then clears itself), `finale-curtain` (the dissolve
+into the stage). `INSTANT_FINISH_FADE_MS` is counted **inside** the hold, not
+added to it, and the curtain's duration is set inline from it — the same
+arrangement as `finale-timer`, so the keyframe carries only the motion.
 
 **The camera only runs during a session.** `UploadPage` holds a `started` flag:
 until someone taps *Start*, `CameraCapture` is not mounted and no stream exists.
@@ -238,6 +254,60 @@ reason the permission prompt lands on a real user gesture, which is where
 browsers most reliably allow it. Ending a session unmounts `CameraCapture`, and
 `useCamera`'s cleanup is what actually stops the stream — so **any new exit path
 must unmount it, not just hide it**.
+
+### The immersive shell
+
+`IMMERSIVE_KIOSK` is the mode the panel actually runs in. The windowed studio
+frames the app as a *page* — a card, a footer, a column of controls — and on a
+900x1400-or-larger portrait display that framing spends most of the screen on
+furniture while the guest's own face sits in a box in the middle of it. With the
+flag on, three things change and nothing else does:
+
+- **Every studio screen renders into
+  [components/kiosk/KioskStage.jsx](src/components/kiosk/KioskStage.jsx)**, which
+  is `fixed inset-0` over the shell. That is why `AppLayout` needs no immersive
+  branch beyond dropping its footer — the stage covers it — and why `/result`
+  still gets its normal paper layout on an event that turns `INSTANT_FINISH` off.
+- **The frame is fitted to `COVER_RATIO`, never stretched to the panel.** This is
+  the same invariant as everywhere else: the preview, the review shot and the
+  editor canvas are the shape of the exported PNG, so what the guest lines up is
+  what `useCamera`'s crop takes and what `compose.js` draws. Stretching would put
+  the guest's face out of register with the photo they receive, which reads as a
+  bug. **Do not "fix" the bars by filling the panel** — re-derive
+  `COVER_WIDTH`/`COVER_HEIGHT` from new artwork instead.
+
+  How much is left over is entirely the panel's ratio against the artwork's:
+  0.643 (900x1400) is within three percent and lands essentially edge to edge,
+  while 9:16 (0.5625) loses **7.4% of the height** above and below. Either way
+  the leftover is *filled*, not just darkened — `KioskStage` lays a hard-blurred,
+  dimmed `ambientSrc` behind everything (the event backdrop by default, the
+  finished cover on the finale), the same self-lighting trick `/tv` uses. The
+  panel reads as edge-to-edge light with an accurate frame floating in it.
+- **There are no buttons.** The panel is a display, not a touchscreen, so the
+  session is driven from a keyboard or a presenter clicker via
+  [hooks/useKeyBindings.js](src/hooks/useKeyBindings.js), reading the `KEYS`
+  table in config.js. The mouse still works everywhere it did: `MovableLayer`
+  drag and resize are untouched, and the keyboard steps write the same
+  normalised layout, so the two can be mixed within one gesture.
+
+The keys, by screen — Enter always means "the obvious next thing", which is why
+it can be bound three times without ambiguity (one screen is mounted at a time):
+
+| Screen | Keys |
+| --- | --- |
+| Attract | `Enter` start · `F` real full screen (any screen) |
+| Live camera | `Enter` shutter · `C` switch camera · `Esc` end session |
+| Review | `Enter` use this photo · `R` retake · `Esc` end session |
+| Editor | arrows / `WASD` move · `+` `-` resize (`Shift` for fine steps) · `R` reset · `Enter` generate & download · `Esc` abandon the session |
+
+Two rules when extending this. **A screen must not bind two actions to the same
+key** — resolution falls back to registration order, which no reader should have
+to reason about. And **on-screen hints are built from `KEYS`**, never from
+hardcoded letters, so a remapped kiosk cannot advertise a key that no longer
+does anything.
+
+Both branches are live: with the flag off, every card, slider and button is back
+and works exactly as before.
 
 ### The camera
 
@@ -298,8 +368,22 @@ accepted cost of flags an operator can flip without a rebuild.
   adding a network call, decide what still works when it fails.
 - **`react-hot-toast` is the only feedback channel** — never `alert()`. Toast
   styling is centralised in `AppLayout`; use `toast.promise()` for async work.
-- **Sizing on `/tv` is in `vmin`/`clamp()`**, so the same markup reads on a
+- **Sizing on `/tv` and the kiosk is in `vmin`**, so the same markup reads on a
   1080×1920 panel and in a laptop tab. Don't introduce fixed pixel sizes there.
+  **Use `max(floor, Nvmin)`, never `clamp(floor, Nvmin, ceiling)`** — a ceiling
+  looks harmless and is invisible up to roughly a 1300px panel, then silently
+  stops the type growing: `clamp(2rem, 7vmin, 4.5rem)` pins a heading at 72px on
+  a 3664px display, two percent of a screen read from four metres away. The
+  venue supplies the panel (1080×1920 at one event, 2880×5120 at the next), so
+  nothing may have an upper bound. Kiosk type comes from the `--text-kiosk-*`
+  scale in the `@theme` block (`text-kiosk-xs` … `text-kiosk-2xl`); add sizes
+  there rather than inlining another `vmin` in a component. The same rule
+  applies to widths (`max-w-[max(28rem,70vmin)]`, not `max-w-2xl`) and to the
+  `Spinner`, which takes a CSS length string for exactly this reason.
+- **Affordances inside the cover scale in `cqw`**, against the
+  `containerType: inline-size` that `MagazineCanvas` already declares —
+  `MovableLayer`'s outline, move badge and resize handle included. A 24px handle
+  is a comfortable target in a laptop tab and a speck on a 2880px panel.
 - **JSX files use no semicolons; the `services/` files use them.** Follow the
   file you are editing.
 

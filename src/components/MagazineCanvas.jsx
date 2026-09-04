@@ -6,7 +6,11 @@ import {
   coverFontStack,
   ensureCoverFont,
 } from '../utils/coverFont'
-import { COVER_RATIO } from '../utils/constants'
+import {
+  COVER_RATIO,
+  PERSON_MAX_WIDTH,
+  PERSON_MIN_WIDTH,
+} from '../utils/constants'
 import { TEXT_ENABLED } from '../config'
 
 /*
@@ -24,6 +28,11 @@ import { TEXT_ENABLED } from '../config'
 
   When `selected`/`onSelect`/`onChange*` are omitted the canvas renders a
   static preview (used on the result page).
+
+  `flush` drops the rounded corner and the lift shadow. Those read as "a cover
+  sitting on a page", which is right in the windowed studio and wrong in the
+  immersive kiosk, where the composition IS the screen and a rounded edge over
+  the bezel just looks like a rendering mistake.
 */
 export default function MagazineCanvas({
   bgSrc,
@@ -35,6 +44,7 @@ export default function MagazineCanvas({
   onSelect,
   onChangePerson,
   onChangeText,
+  flush = false,
   className = '',
 }) {
   const containerRef = useRef(null)
@@ -67,8 +77,9 @@ export default function MagazineCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative mx-auto w-full overflow-hidden rounded-lg bg-paper-200
-        shadow-lift ${className}`}
+      className={`relative mx-auto w-full overflow-hidden bg-paper-200 ${
+        flush ? '' : 'rounded-lg shadow-lift'
+      } ${className}`}
       // Driven by COVER_RATIO so the preview frame always matches the artwork
       // the export is composited against — never hardcode the ratio here.
       style={{ aspectRatio: COVER_RATIO, containerType: 'inline-size' }}
@@ -90,8 +101,8 @@ export default function MagazineCanvas({
             x={layout.person.x}
             y={layout.person.y}
             size={layout.person.width}
-            minSize={0.1}
-            maxSize={1.6}
+            minSize={PERSON_MIN_WIDTH}
+            maxSize={PERSON_MAX_WIDTH}
             selected={selected === 'person'}
             onSelect={() => onSelect?.('person')}
             onChange={(patch) =>

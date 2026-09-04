@@ -11,7 +11,7 @@ export const BASE_URL = "http://127.0.0.1";
   `true` once the service is available — the API client in
   src/services/removeBg.js stays wired up either way.
 */
-export const BG_REMOVAL_ENABLED = true;
+export const BG_REMOVAL_ENABLED = false;
 
 /*
   Name / headline text feature flag.
@@ -141,6 +141,117 @@ export const INSTANT_FINISH = true;
   guest is not left waiting. Tune to taste.
 */
 export const INSTANT_FINISH_HOLD_MS = 5000;
+
+/*
+  How long the finished cover takes to dissolve into the stage at the end of the
+  hold, in ms. Counted INSIDE INSTANT_FINISH_HOLD_MS, not added to it, so the
+  total a guest waits is still the number above.
+
+  The fade is not decoration: on the immersive kiosk the finale carries no
+  progress bar and no caption — the cover simply fills the panel — so this is
+  what tells the guest the session is ending, a beat before the attract screen
+  arrives. Cutting straight from a full-bleed cover to the welcome screen reads
+  as the app crashing and restarting; dissolving reads as an ending.
+*/
+export const INSTANT_FINISH_FADE_MS = 800;
+
+/*
+  Immersive kiosk shell.
+
+  The studio normally renders as a page: a centred card on paper, a footer under
+  it, and a column of buttons and sliders beside the artwork. On the big portrait
+  panel this app is actually installed on, that framing wastes the screen — the
+  guest is looking at their own face from a few metres away, and every pixel
+  spent on chrome is a pixel not spent on the camera.
+
+  With this on, the studio goes edge to edge. The live preview, the review shot
+  and the editor canvas each fill the whole display on a dark stage: no card, no
+  footer, no buttons, no sliders. The session is driven from the keyboard
+  instead (see KEYS below) — a wireless keyboard or a presenter clicker sitting
+  by the panel — and the mouse still drags and resizes the subject exactly as
+  before, so nothing about the editor is lost, only its furniture.
+
+  The frame is FITTED, not stretched: the visible area stays at COVER_RATIO, so
+  what the guest lines up in the preview is still precisely what gets captured
+  and composed. On a panel whose own ratio is near the cover's (900x1400 is
+  0.643 against the cover's 0.661, so within three percent) that is effectively
+  edge to edge; whatever is left over is painted in the stage colour and reads
+  as bezel rather than as layout.
+
+  Set to false for the ordinary windowed studio — every control is still there
+  and still works. Both branches are live.
+*/
+export const IMMERSIVE_KIOSK = true;
+
+/*
+  Keyboard bindings for the immersive kiosk.
+
+  The panel is a display, not a touchscreen, so the guest cannot reach into it —
+  the session is driven from a keyboard or a presenter remote instead. Remote
+  keys are bound alongside the obvious ones because that is what those clickers
+  actually send: PageDown for "next", PageUp for "back", Escape for "stop".
+
+  Each entry is a list of KeyboardEvent.key values, matched case-insensitively
+  so 'a' also catches Shift+A. Bindings are resolved per screen against the
+  handlers that screen registers, which is why Enter can mean "start", "take the
+  photo" and "finish" without ever being ambiguous: only one of those screens is
+  mounted at a time. Keep that property in mind when adding an action — two
+  actions sharing a key on the SAME screen would resolve by registration order,
+  which is not something a reader should have to reason about.
+
+  Remapping is a config edit and a reload; the on-screen hints are generated
+  from these same lists, so they cannot drift out of step with the bindings.
+*/
+export const KEYS = {
+  // Attract screen — begin a session. This keypress is also the user gesture
+  // the browser wants before it will open the camera.
+  start: ["Enter", " ", "PageDown"],
+
+  // Live preview — fire the countdown / shutter. On the error card it retries.
+  shutter: ["Enter", " ", "PageDown"],
+  // Cycle to the next attached webcam, when there is more than one.
+  switchCamera: ["c"],
+
+  // Review — keep the shot and go on to the editor, or throw it away.
+  accept: ["Enter", "PageDown"],
+  retake: ["r", "Backspace", "PageUp"],
+
+  // Editor — nudge the subject. WASD sits under the left hand; the arrows are
+  // what anyone walking up will try first, so both are bound.
+  moveLeft: ["ArrowLeft", "a"],
+  moveRight: ["ArrowRight", "d"],
+  moveUp: ["ArrowUp", "w"],
+  moveDown: ["ArrowDown", "s"],
+  // Editor — resize the subject. '=' is bound with '+' because reaching the
+  // plus sign means holding Shift, which would otherwise switch to fine steps.
+  grow: ["+", "=", "]"],
+  shrink: ["-", "_", "["],
+  // Editor — restore the default layout.
+  resetLayout: ["r"],
+  // Editor — compose, download, and finish the session.
+  finish: ["Enter", "PageDown"],
+
+  // Anywhere — abandon this session and return to the attract screen.
+  quit: ["Escape"],
+  // Anywhere — toggle the browser into real full screen. Kiosk browsers are
+  // usually launched that way already, but a laptop driving the panel for the
+  // first time is not, and this saves hunting for F11 behind the app.
+  fullscreen: ["f"],
+};
+
+/*
+  How far one keypress moves or resizes the subject, as a fraction of the cover
+  (the same 0..1 space the layout itself is stored in — see utils/constants.js).
+
+  Sized so a guest can cross the cover in a couple of seconds of held key: the
+  browser's own key repeat does the rest, no timers here. Holding Shift scales
+  both steps down by KEY_FINE_MULTIPLIER for the last bit of placement, which is
+  the opposite of the usual "Shift = faster" — on a kiosk the coarse move is the
+  common case and the precise one is the exception.
+*/
+export const KEY_MOVE_STEP = 0.012;
+export const KEY_SIZE_STEP = 0.02;
+export const KEY_FINE_MULTIPLIER = 0.25;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
 export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;

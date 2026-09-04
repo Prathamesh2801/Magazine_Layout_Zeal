@@ -1,5 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { useKeyBindings } from '../../hooks/useKeyBindings'
+import { IMMERSIVE_KIOSK } from '../../config'
 
 /*
   The studio shell.
@@ -12,8 +14,37 @@ import { Toaster } from 'react-hot-toast'
 
   The header is intentionally absent on the kiosk: a guest walking up needs the
   one thing they are here to do, not app chrome and a progress stepper.
+
+  With IMMERSIVE_KIOSK (src/config.js) even this much is too much: the studio
+  pages render into KioskStage, which is fixed to the viewport and covers the
+  shell entirely, so the only thing left to do here is drop the footer — a
+  credit line peeking out from under a full-bleed camera would be the one piece
+  of chrome the immersive mode was supposed to remove. The shell itself stays,
+  because /result (INSTANT_FINISH === false) is an ordinary page and still wants
+  its centred, paper-lit layout.
 */
 export default function AppLayout() {
+  /*
+    Real full screen, on a keypress.
+
+    A kiosk browser is usually launched in kiosk mode already, but the laptop
+    driving the panel for the first time is not — and the browser's own toolbar
+    and tab strip eat exactly the vertical space the cover needs. requestFullscreen
+    demands a user gesture, which a keypress is, so this is bound rather than
+    called on mount. Bound here rather than per page so it works on every screen
+    of the session, including the finale.
+  */
+  const toggleFullscreen = () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.()
+      else document.documentElement.requestFullscreen?.().catch(() => {})
+    } catch {
+      // Blocked by policy or unsupported — the app is perfectly usable windowed.
+    }
+  }
+
+  useKeyBindings({ fullscreen: toggleFullscreen }, IMMERSIVE_KIOSK)
+
   return (
     <div className="flex min-h-full flex-col">
       {/*
@@ -88,9 +119,11 @@ export default function AppLayout() {
         <Outlet />
       </main>
 
-      <footer className="shrink-0 border-t border-line py-3 text-center text-xs text-ink-muted">
-        Design your cover · Beige Editorial Studio
-      </footer>
+      {!IMMERSIVE_KIOSK && (
+        <footer className="shrink-0 border-t border-line py-3 text-center text-xs text-ink-muted">
+          Design your cover · Beige Editorial Studio
+        </footer>
+      )}
     </div>
   )
 }

@@ -11,6 +11,13 @@ import { MdOutlineOpenWith } from 'react-icons/md'
             distance-from-center ratio (natural pinch-like feel).
 
   Uses Pointer Events, so mouse, touch (tablet/portrait) and pen all work.
+
+  The affordances — the selection outline, the move badge, the resize handle —
+  are sized in `cqw` against the cover container, which MagazineCanvas already
+  declares as `containerType: inline-size` for the headline. Fixed pixels do not
+  survive this app's size range: a 24px handle is a comfortable target in a
+  laptop tab and an invisible speck on a 2880px kiosk panel. Each keeps a rem
+  floor so it stays grabbable when the cover is small.
 */
 export default function MovableLayer({
   containerRef,
@@ -106,8 +113,10 @@ export default function MovableLayer({
         transform: 'translate(-50%, -50%)',
         touchAction: 'none',
         cursor: 'grab',
-        outline: selected ? '2px dashed var(--color-clay)' : 'none',
-        outlineOffset: '4px',
+        outline: selected
+          ? 'max(2px, 0.3cqw) dashed var(--color-clay)'
+          : 'none',
+        outlineOffset: 'max(4px, 0.6cqw)',
         ...style,
       }}
       onPointerDown={onBodyPointerDown}
@@ -120,15 +129,33 @@ export default function MovableLayer({
       {selected && (
         <>
           {/* Move affordance */}
-          <span className="pointer-events-none absolute -top-3 -left-3 rounded-full bg-clay p-1 text-white shadow-soft">
-            <MdOutlineOpenWith size={14} />
+          <span
+            className="pointer-events-none absolute flex items-center justify-center
+              rounded-full bg-clay text-white shadow-soft"
+            style={{
+              top: 'calc(-1 * max(0.75rem, 1.5cqw))',
+              left: 'calc(-1 * max(0.75rem, 1.5cqw))',
+              width: 'max(1.5rem, 3cqw)',
+              height: 'max(1.5rem, 3cqw)',
+            }}
+          >
+            {/* The icon rides the badge rather than carrying its own size. */}
+            <MdOutlineOpenWith size="58%" />
           </span>
           {/* Resize handle */}
           <span
             role="slider"
             aria-label="Resize layer"
-            className="absolute -bottom-3 -right-3 h-6 w-6 rounded-full border-2 border-white bg-clay shadow-soft"
-            style={{ cursor: 'nwse-resize', touchAction: 'none' }}
+            className="absolute rounded-full border-white bg-clay shadow-soft"
+            style={{
+              cursor: 'nwse-resize',
+              touchAction: 'none',
+              bottom: 'calc(-1 * max(0.75rem, 1.5cqw))',
+              right: 'calc(-1 * max(0.75rem, 1.5cqw))',
+              width: 'max(1.5rem, 3cqw)',
+              height: 'max(1.5rem, 3cqw)',
+              borderWidth: 'max(2px, 0.35cqw)',
+            }}
             onPointerDown={onHandlePointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}

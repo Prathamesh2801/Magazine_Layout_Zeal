@@ -42,6 +42,38 @@
 
   --shadow-soft: 0 1px 2px rgba(43, 38, 32, 0.06), 0 8px 24px rgba(43, 38, 32, 0.08);
   --shadow-lift: 0 2px 4px rgba(43, 38, 32, 0.08), 0 16px 40px rgba(43, 38, 32, 0.14);
+
+  /*
+    Kiosk type scale (IMMERSIVE_KIOSK).
+
+    `max(floor, Nvmin)`, deliberately — a FLOOR with no ceiling. The kiosk panel
+    is whatever the venue supplies: 1080x1920 at one event, 2880x5120 at the
+    next. vmin already tracks that perfectly (on a portrait panel it IS the panel
+    width, so `7vmin` is 7% of the screen at every size), and the job of the
+    floor is only to stop the type collapsing in a small laptop tab while
+    building.
+
+    An upper bound is what breaks this, which is why there isn't one. A
+    `clamp(2rem, 7vmin, 4.5rem)` looks harmless and is fine up to about a 1300px
+    panel, then silently stops growing: on a 3664px-wide screen it pins the
+    heading at 72px — two percent of the display, read from four metres away.
+    If you add a size here, give it a floor and a vmin, never a third argument.
+
+    Sizes are named for their role on the panel, not their pixel value, so the
+    whole kiosk moves together when the scale is retuned.
+  */
+  --text-kiosk-xs: max(0.7rem, 1.5vmin);
+  --text-kiosk-xs--line-height: 1.4;
+  --text-kiosk-sm: max(0.8rem, 1.9vmin);
+  --text-kiosk-sm--line-height: 1.35;
+  --text-kiosk-base: max(0.95rem, 2.4vmin);
+  --text-kiosk-base--line-height: 1.35;
+  --text-kiosk-lg: max(1.15rem, 3vmin);
+  --text-kiosk-lg--line-height: 1.3;
+  --text-kiosk-xl: max(1.5rem, 4.5vmin);
+  --text-kiosk-xl--line-height: 1.2;
+  --text-kiosk-2xl: max(2rem, 7vmin);
+  --text-kiosk-2xl--line-height: 1.05;
 }
 
 @layer base {
@@ -240,6 +272,104 @@
 }
 
 /*
+  The finish, immersive (CoverFinale under IMMERSIVE_KIOSK).
+
+  The cover arrives into the exact frame the editor just occupied, so nothing
+  moves on generate — the composition is simply replaced by the finished PNG.
+  These four beats are the whole interface at that step: there is no bar and no
+  caption to read, so the motion has to carry the meaning.
+
+    1. reveal   — the cover settles out of a breath of scale. The payoff.
+    2. sheen    — one light sweep across it while the PNG is being written to
+                  disk. This is the "saving" state: a webcam kiosk has no
+                  spinner worth showing at this size, and a sweep reads as
+                  something happening TO the cover rather than next to it.
+    3. tick     — lands when the browser has actually taken the file, holds,
+                  then clears itself so the cover ends up unobstructed.
+    4. curtain  — the dissolve into the stage over INSTANT_FINISH_FADE_MS, set
+                  inline from config; the keyframe carries only the motion.
+*/
+@keyframes finale-reveal {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.finale-reveal {
+  animation: finale-reveal 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Swept by background-position rather than transform, so the band cannot
+   overflow the frame and force a scrollbar on a full-bleed panel. */
+@keyframes finale-sheen {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
+}
+
+.finale-sheen {
+  background-image: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 62%
+  );
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  animation: finale-sheen 1300ms ease-out 250ms both;
+}
+
+/* Pops in, holds, and clears — the cover is the thing worth looking at. */
+@keyframes finale-tick {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  16% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  26% {
+    transform: scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+
+.finale-tick {
+  animation: finale-tick 2400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes finale-curtain {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.finale-curtain {
+  animation-name: finale-curtain;
+  animation-timing-function: ease-in;
+  animation-fill-mode: both;
+}
+
+/*
   The finish hold (CoverFinale). Drains left-to-right over exactly
   INSTANT_FINISH_HOLD_MS — the duration is set inline from config, so this
   keyframe carries only the motion — letting the guest see the session ending
@@ -290,4 +420,19 @@
     The finish timer is information, not decoration: it says how long the kiosk
     will hold before resetting, so it keeps running at its real duration.
   */
+
+  /*
+    Same rule for the immersive finish: the sweep is pure flourish and goes, but
+    the tick (the file was saved) and the curtain (the session is ending) are
+    the only things saying so on a screen with no caption, so they stay — just
+    without the travel and the overshoot.
+  */
+  .finale-sheen {
+    animation: none;
+  }
+
+  .finale-reveal,
+  .finale-tick {
+    animation: tv-fade-in 300ms ease both;
+  }
 }

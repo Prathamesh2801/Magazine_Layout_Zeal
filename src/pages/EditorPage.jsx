@@ -13,7 +13,9 @@ import Card from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import Spinner from '../components/ui/Spinner'
 import MagazineCanvas from '../components/MagazineCanvas'
+import KioskStage from '../components/kiosk/KioskStage'
 import { useMagazine } from '../context/MagazineContext'
+import { useKeyBindings } from '../hooks/useKeyBindings'
 import { composeCover } from '../utils/compose'
 import { uploadCoverImage } from '../services/uploadImage'
 import { coverFilename } from '../utils/filename'
@@ -22,6 +24,8 @@ import {
   TEXT_COLORS,
   DEFAULT_PERSON,
   DEFAULT_TEXT,
+  PERSON_MAX_WIDTH,
+  PERSON_MIN_WIDTH,
 } from '../utils/constants'
 import {
   COVER_FONT_OPTIONS,
@@ -32,7 +36,11 @@ import {
 } from '../utils/coverFont'
 import CoverFinale from '../components/CoverFinale'
 import {
+  IMMERSIVE_KIOSK,
   INSTANT_FINISH,
+  KEY_FINE_MULTIPLIER,
+  KEY_MOVE_STEP,
+  KEY_SIZE_STEP,
   TEXT_ENABLED,
   UPLOAD_ENABLED,
 } from '../config'
@@ -70,8 +78,6 @@ export default function EditorPage() {
   useEffect(() => {
     if (TEXT_ENABLED) ensureAllCoverFonts()
   }, [])
-
-  if (!person?.dataUrl) return null
 
   /*
     Generate = compose locally, then push the PNG to the image API.
@@ -197,9 +203,117 @@ export default function EditorPage() {
     toast('Layout reset', { icon: '↺' })
   }
 
+  /*
+    The keyboard's half of the editor.
+
+    These write the same normalised layout the pointer does — MovableLayer and
+    these steps are two ways into one state — so a guest can start a drag with
+    the mouse and finish it with the arrows without the two disagreeing. Holding
+    Shift shrinks the step (KEY_FINE_MULTIPLIER) for the last few pixels of
+    placement; the browser's own key repeat supplies the "held down" motion, so
+    there is no timer here to keep in sync with anything.
+  */
+  const nudge = (dx, dy, event) => {
+    const step = KEY_MOVE_STEP * (event?.shiftKey ? KEY_FINE_MULTIPLIER : 1)
+    updatePersonLayer({
+      x: clamp(layout.person.x + dx * step, 0, 1),
+      y: clamp(layout.person.y + dy * step, 0, 1),
+    })
+  }
+
+  const resizeBy = (direction, event) => {
+    const step = KEY_SIZE_STEP * (event?.shiftKey ? KEY_FINE_MULTIPLIER : 1)
+    updatePersonLayer({
+      width: clamp(
+        layout.person.width + direction * step,
+        PERSON_MIN_WIDTH,
+        PERSON_MAX_WIDTH,
+      ),
+    })
+  }
+
+  useKeyBindings(
+    {
+      moveLeft: (e) => nudge(-1, 0, e),
+      moveRight: (e) => nudge(1, 0, e),
+      moveUp: (e) => nudge(0, -1, e),
+      moveDown: (e) => nudge(0, 1, e),
+      grow: (e) => resizeBy(1, e),
+      shrink: (e) => resizeBy(-1, e),
+      resetLayout: resetLayers,
+      finish: onGenerate,
+      /*
+        Esc abandons the whole session rather than stepping back a page. The
+        windowed studio's Back button keeps the photo so it can be retaken, but
+        on the kiosk the guest who presses Esc is walking away — leaving their
+        face in context for the next person to find would be both confusing and
+        a small privacy leak, so this clears everything.
+      */
+      quit: finishSession,
+    },
+    /*
+      Disabled while composing (a second Enter would start a second export) and
+      during the finale, which is deliberately not interactive. Also gated on the
+      photo actually being here: the redirect above runs in an effect, so for one
+      render this component exists with no subject for onGenerate to compose.
+    */
+    IMMERSIVE_KIOSK && Boolean(person?.dataUrl) && !busy && !finaleUrl,
+  )
+
+  if (!person?.dataUrl) return null
+
   // Takes over the whole viewport — the editor behind it is finished business.
   if (finaleUrl) {
     return <CoverFinale src={finaleUrl} onDone={finishSession} />
+  }
+
+  const canvas = (
+    <MagazineCanvas
+      interactive
+      flush={IMMERSIVE_KIOSK}
+      bgSrc={bgSrc}
+      overlaySrc={overlaySrc}
+      personSrc={person.dataUrl}
+      layout={layout}
+      selected={selected}
+      onSelect={setSelected}
+      onChangePerson={updatePersonLayer}
+      onChangeText={updateTextLayer}
+    />
+  )
+
+  /*
+    The kiosk editor: the composition at the size of the panel, and nothing
+    else. The sliders and the layer tabs are gone because there is no one to
+    click them — the arrows move the subject, +/- resize it, Enter finishes —
+    but the canvas itself stays fully interactive, so a mouse plugged into the
+    kiosk still drags and resizes exactly as it does in the windowed studio.
+  */
+  if (IMMERSIVE_KIOSK) {
+    return (
+      <KioskStage
+        hints={[
+          { keys: ['←', '→', '↑', '↓'], label: 'Move' },
+          { keys: ['+', '−'], label: 'Resize' },
+          { keys: ['R'], label: 'Reset' },
+          { keys: ['Enter'], label: 'Save my cover' },
+          { keys: ['Esc'], label: 'Back' },
+        ]}
+      >
+        <div className="absolute inset-0">{canvas}</div>
+
+        {busy && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-[2vmin] bg-stage/75">
+            <Spinner size="max(2rem,6vmin)" thickness="max(2px,0.5vmin)" />
+            <p className="text-kiosk-base font-medium text-paper">
+              {phase === 'uploading'
+                ? `Uploading… ${progress}%`
+                : 'Making your cover…'}
+            </p>
+          </div>
+        )}
+      </KioskStage>
+    )
   }
 
   return (
@@ -223,17 +337,7 @@ export default function EditorPage() {
       <div className="grid grid-cols-1 gap-5 landscape:lg:grid-cols-[1fr_340px] landscape:lg:gap-6">
         {/* Canvas — capped so it cannot crowd out the controls on a tall panel. */}
         <div className="mx-auto w-full max-w-[min(72vh,28rem)] landscape:lg:max-w-none">
-          <MagazineCanvas
-            interactive
-            bgSrc={bgSrc}
-            overlaySrc={overlaySrc}
-            personSrc={person.dataUrl}
-            layout={layout}
-            selected={selected}
-            onSelect={setSelected}
-            onChangePerson={updatePersonLayer}
-            onChangeText={updateTextLayer}
-          />
+          {canvas}
         </div>
 
         {/* Controls */}
@@ -261,8 +365,8 @@ export default function EditorPage() {
             <Control
               label="Photo size"
               value={layout.person.width}
-              min={0.1}
-              max={1.6}
+              min={PERSON_MIN_WIDTH}
+              max={PERSON_MAX_WIDTH}
               step={0.01}
               onChange={(v) => updatePersonLayer({ width: v })}
             />
@@ -422,6 +526,10 @@ export default function EditorPage() {
       </div>
     </div>
   )
+}
+
+function clamp(v, lo, hi) {
+  return Math.min(hi, Math.max(lo, v))
 }
 
 function LayerTab({ active, icon, label, onClick }) {
