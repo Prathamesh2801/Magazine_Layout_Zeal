@@ -11,7 +11,7 @@ export const BASE_URL = "http://127.0.0.1";
   `true` once the service is available — the API client in
   src/services/removeBg.js stays wired up either way.
 */
-export const BG_REMOVAL_ENABLED = false;
+export const BG_REMOVAL_ENABLED = true;
 
 /*
   Name / headline text feature flag.
