@@ -13,9 +13,10 @@ import { applyTextCase, coverFontShorthand, ensureCoverFont } from './coverFont'
 
   Quality: the canvas is rendered at COVER_WIDTH * scale. The scale is derived
   from the subject's NATIVE resolution so a high-res DSLR photo is drawn at (or
-  near) full pixel density instead of being downsampled to 1500px. All drawing
-  stays in the 1500x2100 coordinate space via ctx.scale(), so the layout maths
-  are unchanged. PNG output is lossless — no quality-degrading compression.
+  near) full pixel density instead of being downsampled to the cover's base
+  width. All drawing stays in COVER_WIDTH x COVER_HEIGHT space via ctx.scale(),
+  so the layout maths are unchanged whatever the export scale turns out to be.
+  PNG output is lossless — no quality-degrading compression.
 
   Returns: { blob, url, width, height, scale }
 */
@@ -45,7 +46,7 @@ export async function composeCover({ bgSrc, personSrc, overlaySrc, layout }) {
   const ctx = canvas.getContext('2d')
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  ctx.scale(scale, scale) // draw everything in 1500x2100 space
+  ctx.scale(scale, scale) // draw everything in COVER_WIDTH x COVER_HEIGHT space
 
   // 1. Background
   ctx.drawImage(bg, 0, 0, COVER_WIDTH, COVER_HEIGHT)

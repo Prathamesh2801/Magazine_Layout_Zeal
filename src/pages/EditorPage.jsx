@@ -44,7 +44,7 @@ import {
   TEXT_ENABLED,
   UPLOAD_ENABLED,
 } from '../config'
-import bgSrc from '../assets/bg.jpeg'
+import bgSrc from '../assets/bg.png'
 import overlaySrc from '../assets/overlay.png'
 
 export default function EditorPage() {

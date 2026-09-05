@@ -70,7 +70,7 @@ src/
     ui/                       Button, Card, Spinner
     layout/                   AppLayout (header/Toaster/footer), Stepper
   pages/                      UploadPage, EditorPage, ResultPage, TvPage
-  assets/                     bg.jpeg, overlay.png, fonts/ (OLD/ holds the previous event's art)
+  assets/                     bg.png, overlay.png, fonts/ (OLD/ holds retired event art)
 ```
 
 ### The two flows
@@ -92,11 +92,11 @@ with a paired slide-in/slide-out transition.
 
 ### Layer model — the core invariant
 
-The cover is **1500 × 2271**, which is the aspect ratio of the current
-`overlay.png` (2336 × 3536 → 0.6606) — *not* a textbook 5:7. Four layers, back
-to front:
+The cover is **2160 × 3840** — 9:16, which is the kiosk panel's own resolution
+pixel for pixel, and therefore the aspect ratio `overlay.png` must be. Four
+layers, back to front:
 
-1. background (`assets/bg.jpeg`)
+1. background (`assets/bg.png`)
 2. person (background-removed) — movable
 3. name text — movable; **omitted entirely unless `TEXT_ENABLED`**
 4. overlay frame (`assets/overlay.png`) — always on top, non-interactive
@@ -111,7 +111,8 @@ the same `layout`:
   preview; text scales with `cqw` (container query units) against
   `containerType: inline-size`.
 - [utils/compose.js](src/utils/compose.js) — canvas export; `ctx.scale()` keeps
-  all drawing maths in 1500 × 2100 space regardless of the chosen export scale.
+  all drawing maths in `COVER_WIDTH` × `COVER_HEIGHT` space regardless of the
+  chosen export scale.
 
 **If you change how a layer is positioned, drawn, cased, or typeset, you must
 change both renderers.** Anything they share belongs in
@@ -119,7 +120,12 @@ change both renderers.** Anything they share belongs in
 the letter-case transform).
 
 Export scale is derived from the subject's native resolution so a DSLR photo is
-not downsampled, capped at `EXPORT_MAX_SCALE` (4 → up to 6000 × 8400 PNG).
+not downsampled, capped at `EXPORT_MAX_SCALE`. **That cap has to come down as the
+cover's base width goes up**: at 2160 wide, scale 4 would ask for 8640 × 15360 —
+132 megapixels, over half a gigabyte of RGBA, which browsers refuse to allocate.
+It is 2 (ceiling 4320 × 7680), and with the kiosk's webcam the scale lands at 1
+anyway — a 1080p frame cropped to 9:16 is 608px wide, well under the 1296px the
+subject occupies at its default size.
 
 ### Backend contracts
 
@@ -155,20 +161,32 @@ This is the common task. In order of frequency:
 
 1. **Host / endpoints** — `BASE_URL` in [config.js](src/config.js). Everything
    else derives from it. Never hardcode a URL elsewhere.
-2. **Artwork** — replace [src/assets/bg.jpeg](src/assets/bg.jpeg) and
-   [src/assets/overlay.png](src/assets/overlay.png).
-   [src/assets/OLD/](src/assets/OLD/) is the previous event's art; leave it be.
+2. **Artwork** — replace [src/assets/bg.png](src/assets/bg.png) and
+   [src/assets/overlay.png](src/assets/overlay.png), and retire the outgoing pair
+   into its own folder under [src/assets/OLD/](src/assets/OLD/) — one subfolder
+   per generation, keeping the original filenames, so earlier events' art stays
+   intact rather than being overwritten by the next one.
    **`COVER_WIDTH`/`COVER_HEIGHT` in
    [utils/constants.js](src/utils/constants.js) must match the new overlay's
    aspect ratio** — derive it as
    `COVER_HEIGHT = round(COVER_WIDTH * overlayHeight / overlayWidth)`.
    `COVER_RATIO` and the whole layout system follow automatically, including
-   both preview frames. Getting this wrong is silent and ugly: the preview fits
+   both preview frames. **Match the artwork to the panel's ratio** — that is what
+   makes the immersive kiosk genuinely edge to edge, since the stage fits its
+   frame to `COVER_RATIO` rather than stretching it. Art at any other ratio still
+   works (the leftover gets an ambient wash) but leaves dead space: the previous
+   event's 0.6606 art cost 285px of black top and bottom on a 2160 × 3840 panel. Getting this wrong is silent and ugly: the preview fits
    the overlay with `object-cover` (so it **crops**, top and bottom) while the
    export stretches it to the cover dimensions (so it **distorts**) — and the
    two then disagree, which is the exact failure this architecture exists to
-   prevent. `bg.jpeg` is a photographic backdrop and can be a hair off; the
-   overlay cannot.
+   prevent. The background is photographic and can be a hair off; the overlay
+   cannot.
+
+   **`overlay.png` must carry a real alpha channel** (PNG-24, colour type 6) and
+   the photo window must be genuinely transparent — a flattened or PNG-8 export
+   looks identical in a viewer and hides the guest completely at runtime. Then
+   re-derive `DEFAULT_PERSON` from the window's pixel rect; the formulas live in
+   [utils/constants.js](src/utils/constants.js) beside the values they produced.
 3. **Fonts** — drop the file in [src/assets/fonts/](src/assets/fonts/), add one
    entry to `COVER_FONTS` in [utils/coverFont.js](src/utils/coverFont.js), point
    `DEFAULT_COVER_FONT` at it. The editor's picker updates itself. `weightRange`
@@ -277,13 +295,14 @@ flag on, three things change and nothing else does:
   bug. **Do not "fix" the bars by filling the panel** — re-derive
   `COVER_WIDTH`/`COVER_HEIGHT` from new artwork instead.
 
-  How much is left over is entirely the panel's ratio against the artwork's:
-  0.643 (900x1400) is within three percent and lands essentially edge to edge,
-  while 9:16 (0.5625) loses **7.4% of the height** above and below. Either way
-  the leftover is *filled*, not just darkened — `KioskStage` lays a hard-blurred,
-  dimmed `ambientSrc` behind everything (the event backdrop by default, the
-  finished cover on the finale), the same self-lighting trick `/tv` uses. The
-  panel reads as edge-to-edge light with an accurate frame floating in it.
+  How much is left over is entirely the panel's ratio against the artwork's.
+  **Matched, there is none** — the current 9:16 art on the 2160 × 3840 panel
+  fills it exactly. Mismatched, the leftover is *filled* rather than merely
+  darkened: `KioskStage` lays a hard-blurred, dimmed `ambientSrc` behind
+  everything (the event backdrop by default, the finished cover on the finale),
+  the same self-lighting trick `/tv` uses, so the panel still reads as
+  edge-to-edge light with an accurate frame floating in it. That is the fallback
+  for a laptop tab or a panel nobody re-skinned for, not the target.
 - **There are no buttons.** The panel is a display, not a touchscreen, so the
   session is driven from a keyboard or a presenter clicker via
   [hooks/useKeyBindings.js](src/hooks/useKeyBindings.js), reading the `KEYS`

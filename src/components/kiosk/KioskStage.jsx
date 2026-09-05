@@ -1,6 +1,6 @@
 import { useHintsVisible } from '../../hooks/useHintsVisible'
 import { COVER_RATIO } from '../../utils/constants'
-import ambientDefault from '../../assets/bg.jpeg'
+import ambientDefault from '../../assets/bg.png'
 
 /*
   The full-bleed kiosk surface.
@@ -17,19 +17,19 @@ import ambientDefault from '../../assets/bg.jpeg'
   the panel would break that agreement the moment the panel's ratio was not
   exactly the artwork's — and it never is.
 
-  How much the fit leaves over depends entirely on the panel. A 900x1400 screen
-  (0.643) is within three percent of the artwork and comes out essentially edge
-  to edge; a 9:16 panel (0.5625) is not, and loses about 7.4% of its height above
-  and below the frame. That is geometry, not a bug — the honest fix for a panel
-  you own is to re-skin the artwork to its ratio (see "Re-skinning for a new
-  event"). What is NOT a fix is stretching the frame: the guest would line up
-  against one shape and be handed another.
+  How much the fit leaves over depends entirely on the panel's ratio against the
+  artwork's, and on the kiosk it is currently NOTHING: the art is 9:16, the panel
+  is 2160 x 3840, and the frame fills it exactly. That is the whole reason to
+  cut artwork at the panel's ratio — see "Re-skinning for a new event". What is
+  never the answer is stretching the frame, because then the guest lines up
+  against one shape and is handed another.
 
-  So the leftover is filled rather than removed. `ambientSrc` — the event
-  backdrop by default, the finished cover on the finale — is blurred hard and
-  dimmed behind everything, the same trick the /tv wall uses to light itself.
-  The panel reads as edge-to-edge light with the accurate frame floating in the
-  middle of it, instead of as a picture with two black bands bolted on.
+  On any other screen — a laptop tab while building, a panel nobody re-skinned
+  for — the leftover is filled rather than merely darkened. `ambientSrc` (the
+  event backdrop by default, the finished cover on the finale) is blurred hard
+  and dimmed behind everything, the same trick the /tv wall uses to light itself,
+  so the screen still reads as edge-to-edge light with an accurate frame floating
+  in it rather than as a picture with two black bands bolted on.
 
   `frame={false}` is for the attract screen, which is type rather than artwork:
   it already owns the whole panel, so there is nothing to fill and the wash
