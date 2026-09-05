@@ -6,10 +6,10 @@ import { applyTextCase, coverFontShorthand, ensureCoverFont } from './coverFont'
 /*
   Composites the four layers to an off-screen canvas and returns a lossless
   PNG blob (plus an object URL). Layer order (back -> front):
-    1. background (bg.png)
+    1. background (assets/bg.*)
     2. person (bg-removed)
     3. name text
-    4. overlay frame (overlay.png)
+    4. overlay frame (assets/overlay.png)
 
   Quality: the canvas is rendered at COVER_WIDTH * scale. The scale is derived
   from the subject's NATIVE resolution so a high-res DSLR photo is drawn at (or

@@ -70,7 +70,7 @@ src/
     ui/                       Button, Card, Spinner
     layout/                   AppLayout (header/Toaster/footer), Stepper
   pages/                      UploadPage, EditorPage, ResultPage, TvPage
-  assets/                     bg.png, overlay.png, fonts/ (OLD/ holds retired event art)
+  assets/                     bg.jpeg, overlay.png, fonts/ (OLD/ holds retired event art)
 ```
 
 ### The two flows
@@ -85,6 +85,14 @@ src/
    the PNG best-effort and always lands on `/result`.
 3. **Result** — preview, download the PNG, copy the gallery link, or start over.
 
+With `EDITOR_ENABLED` off (the current kiosk) steps 1 and 2 lose their
+decisions: the capture is processed the moment it is taken, and `EditorPage`
+composes on mount instead of waiting for a button. The page still exists and is
+still routed — it is where compose, download and the finale live — it simply
+renders the composition non-interactively while it works. That reuse is the
+reason the flag costs so little: there is no second export path to keep in
+step with the first.
+
 **Display wall** (`/tv` — deliberately outside `AppLayout`, no app chrome, and
 only routed when `TV_ENABLED`): subscribes to the SSE feed, promotes each newly
 arrived cover to the screen immediately, and otherwise cycles the back catalogue
@@ -96,7 +104,7 @@ The cover is **2160 × 3840** — 9:16, which is the kiosk panel's own resolutio
 pixel for pixel, and therefore the aspect ratio `overlay.png` must be. Four
 layers, back to front:
 
-1. background (`assets/bg.png`)
+1. background (`assets/bg.jpeg`)
 2. person (background-removed) — movable
 3. name text — movable; **omitted entirely unless `TEXT_ENABLED`**
 4. overlay frame (`assets/overlay.png`) — always on top, non-interactive
@@ -161,7 +169,7 @@ This is the common task. In order of frequency:
 
 1. **Host / endpoints** — `BASE_URL` in [config.js](src/config.js). Everything
    else derives from it. Never hardcode a URL elsewhere.
-2. **Artwork** — replace [src/assets/bg.png](src/assets/bg.png) and
+2. **Artwork** — replace [src/assets/bg.jpeg](src/assets/bg.jpeg) and
    [src/assets/overlay.png](src/assets/overlay.png), and retire the outgoing pair
    into its own folder under [src/assets/OLD/](src/assets/OLD/) — one subfolder
    per generation, keeping the original filenames, so earlier events' art stays
@@ -218,6 +226,7 @@ must keep working after any edit that touches them.**
 | `TEXT_ENABLED` | The headline is gone end to end: no name field on upload (and no name validation), no Name tab or font/case/colour controls in the editor, no text layer in either renderer, and the export composites three layers instead of four. |
 | `TV_ENABLED` | The `/tv` route is not registered at all, so `/#/tv` does not resolve and nothing ever opens an `EventSource`. The studio flow is untouched. |
 | `UPLOAD_ENABLED` | Nothing is POSTed to the gallery API. The editor composes and goes straight to `/result`, where the cover is downloaded from the browser. This is the offline-kiosk setup. |
+| `EDITOR_ENABLED` | No editing step at all. The shutter runs straight through: background removed, cover composed, PNG downloaded, finale, reset — nothing to press between the photo and the finished cover. The review screen goes with it (its only remaining job would be asking a question nobody needs asked), unless `TEXT_ENABLED` keeps it for the name field. `DEFAULT_PERSON` stops being a starting point and becomes the final layout of every cover, so re-derive it whenever the artwork changes. |
 | `INSTANT_FINISH` | The separate `/result` page is used again: generate navigates there, offering download / keep editing / start over. With it **true** (the kiosk default) the editor finishes in place — download, hold the cover for `INSTANT_FINISH_HOLD_MS`, reset to the attract screen. |
 | `CAMERA_ENABLED` | The webcam option disappears from the upload page. |
 | `FILE_UPLOAD_ENABLED` | The "choose a file" option disappears. With the camera on and this off, the page opens straight into the live preview — the kiosk default. Turning **both** off would strand the page, so the file picker is restored as a fallback. |
@@ -319,6 +328,10 @@ it can be bound three times without ambiguity (one screen is mounted at a time):
 | Live camera | `Enter` shutter · `C` switch camera · `Esc` end session |
 | Review | `Enter` use this photo · `R` retake · `Esc` end session |
 | Editor | arrows / `WASD` move · `+` `-` resize (`Shift` for fine steps) · `R` reset · `Enter` generate & download · `Esc` abandon the session |
+
+With `EDITOR_ENABLED` off, the review and editor rows collapse to `Esc` alone —
+there is nothing to accept, adjust or confirm, so binding Enter to anything
+there would only invite a guest to interrupt work already in progress.
 
 The legend has two audiences and is **hidden by default** (`KIOSK_HINTS_VISIBLE`):
 to a guest standing in front of the panel it is clutter over their own face, and

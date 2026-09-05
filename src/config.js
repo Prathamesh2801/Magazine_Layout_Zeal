@@ -123,6 +123,36 @@ export const CAMERA_COUNTDOWN_S = 3;
 export const CAMERA_MIRROR_PREVIEW = false;
 
 /*
+  Whether the guest gets an editor at all.
+
+  The editor exists so a subject can be dragged and resized into the artwork's
+  window. That is worth a step when the framing varies — a handheld tablet, a
+  guest who stands wherever they like. At this event the camera is bolted at a
+  fixed distance, so every guest lands in very nearly the same place and the
+  "adjust it" step becomes a question with only one sensible answer, asked of
+  someone who came to have a photo taken.
+
+  With this `false` the session is: shutter → background removed → composed →
+  downloaded → the finale's hold → back to the attract screen. Nothing to press
+  between the shutter and the finished cover.
+
+  Two consequences worth knowing before flipping it:
+
+  · DEFAULT_PERSON (utils/constants.js) stops being a starting point and becomes
+    the FINAL layout of every cover produced. It is derived from the overlay's
+    transparent window, so it is right for this artwork — but re-derive it when
+    the artwork changes, because nobody downstream can correct it any more.
+
+  · The review screen is skipped with the editor, since its only remaining job
+    would be to ask a question nobody needs asked. The exception is TEXT_ENABLED:
+    the headline is typed on that screen, so it stays regardless — there is no
+    other way to enter a name.
+
+  Set to true to bring the whole editing step back; it is untouched underneath.
+*/
+export const EDITOR_ENABLED = false;
+
+/*
   Skip the separate result page and finish inside the editor.
 
   A kiosk session is one cover per guest, so the extra screen is a step nobody

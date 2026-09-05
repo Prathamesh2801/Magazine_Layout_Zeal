@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -36,6 +36,7 @@ import {
 } from '../utils/coverFont'
 import CoverFinale from '../components/CoverFinale'
 import {
+  EDITOR_ENABLED,
   IMMERSIVE_KIOSK,
   INSTANT_FINISH,
   KEY_FINE_MULTIPLIER,
@@ -44,7 +45,7 @@ import {
   TEXT_ENABLED,
   UPLOAD_ENABLED,
 } from '../config'
-import bgSrc from '../assets/bg.png'
+import bgSrc from '../assets/bg.jpeg'
 import overlaySrc from '../assets/overlay.png'
 
 export default function EditorPage() {
@@ -191,6 +192,36 @@ export default function EditorPage() {
     }
   }
 
+  /*
+    With the editor switched off (EDITOR_ENABLED, src/config.js) this page has no
+    controls to offer: it exists only to compose the cover, hand over the PNG and
+    run the finale. So it does that the moment the subject arrives, and the guest
+    never sees a screen asking them for anything.
+
+    The ref guard is not optional. React's StrictMode double-invokes effects in
+    development, and without it every cover would be composed — and DOWNLOADED —
+    twice.
+  */
+  const autoComposed = useRef(false)
+  useEffect(() => {
+    if (EDITOR_ENABLED || autoComposed.current) return
+    if (!person?.dataUrl) return
+    autoComposed.current = true
+    /*
+      Kicking off the compose sets `phase` synchronously, which the lint rule
+      reads as state that could have been derived during render. Here it cannot:
+      this IS the side effect — an async pipeline that composes, writes a file to
+      disk and then hands over to the finale. There is no render-time equivalent.
+
+      The dependency list is `person` alone on purpose. onGenerate is rebuilt on
+      every render, so listing it would re-run this effect constantly; the ref
+      above is what actually makes it happen once.
+    */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    onGenerate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [person])
+
   const resetLayers = () => {
     updatePersonLayer({ ...DEFAULT_PERSON })
     if (TEXT_ENABLED) {
@@ -256,8 +287,22 @@ export default function EditorPage() {
       during the finale, which is deliberately not interactive. Also gated on the
       photo actually being here: the redirect above runs in an effect, so for one
       render this component exists with no subject for onGenerate to compose.
+
+      And gated on the editor existing at all — with EDITOR_ENABLED off there is
+      nothing to move, resize or confirm, and the cover is already composing.
+      Esc is handled separately below so staff can still abandon a session.
     */
-    IMMERSIVE_KIOSK && Boolean(person?.dataUrl) && !busy && !finaleUrl,
+    IMMERSIVE_KIOSK &&
+      EDITOR_ENABLED &&
+      Boolean(person?.dataUrl) &&
+      !busy &&
+      !finaleUrl,
+  )
+
+  // The one key that survives an editor-less session.
+  useKeyBindings(
+    { quit: finishSession },
+    IMMERSIVE_KIOSK && !EDITOR_ENABLED && !finaleUrl,
   )
 
   if (!person?.dataUrl) return null
@@ -267,9 +312,15 @@ export default function EditorPage() {
     return <CoverFinale src={finaleUrl} onDone={finishSession} />
   }
 
+  /*
+    Interactive only when there is an editor. Switched off, this is the same
+    frame showing the same composition — the guest watches their cover being
+    built rather than being handed controls for it, and the finale then replaces
+    it in place with no layout movement at all.
+  */
   const canvas = (
     <MagazineCanvas
-      interactive
+      interactive={EDITOR_ENABLED}
       flush={IMMERSIVE_KIOSK}
       bgSrc={bgSrc}
       overlaySrc={overlaySrc}
@@ -292,13 +343,17 @@ export default function EditorPage() {
   if (IMMERSIVE_KIOSK) {
     return (
       <KioskStage
-        hints={[
-          { keys: ['←', '→', '↑', '↓'], label: 'Move' },
-          { keys: ['+', '−'], label: 'Resize' },
-          { keys: ['R'], label: 'Reset' },
-          { keys: ['Enter'], label: 'Save my cover' },
-          { keys: ['Esc'], label: 'Back' },
-        ]}
+        hints={
+          EDITOR_ENABLED
+            ? [
+                { keys: ['←', '→', '↑', '↓'], label: 'Move' },
+                { keys: ['+', '−'], label: 'Resize' },
+                { keys: ['R'], label: 'Reset' },
+                { keys: ['Enter'], label: 'Save my cover' },
+                { keys: ['Esc'], label: 'Back' },
+              ]
+            : [{ keys: ['Esc'], label: 'Cancel' }]
+        }
       >
         <div className="absolute inset-0">{canvas}</div>
 
@@ -313,6 +368,21 @@ export default function EditorPage() {
           </div>
         )}
       </KioskStage>
+    )
+  }
+
+  /*
+    The windowed studio, editor-less: the composition and a note that it is being
+    made. No card of controls, because there are none.
+  */
+  if (!EDITOR_ENABLED) {
+    return (
+      <div className="mx-auto w-full max-w-[min(72vh,28rem)]">
+        {canvas}
+        <p className="mt-4 flex items-center justify-center gap-2 text-sm text-ink-soft">
+          <Spinner size={18} /> Making your cover…
+        </p>
+      </div>
     )
   }
 

@@ -21,6 +21,7 @@ import { COVER_RATIO, ROUTES } from "../utils/constants";
 import {
   BG_REMOVAL_ENABLED,
   CAMERA_ENABLED,
+  EDITOR_ENABLED,
   FILE_UPLOAD_ENABLED,
   IMMERSIVE_KIOSK,
   TEXT_ENABLED,
@@ -45,6 +46,16 @@ export default function UploadPage() {
 
   const hasImage = Boolean(original?.dataUrl);
   const onAttract = CAMERA_ENABLED && !started;
+  /*
+    Is there anything left to ask the guest once the shutter has fired?
+
+    With the editor off there is no layout to adjust, so the review screen's only
+    remaining job would be to ask "is this one alright?" of someone who came to
+    have a photo taken. It goes too — EXCEPT when the cover carries a headline,
+    because that name is typed on the review screen and there is nowhere else to
+    put it.
+  */
+  const skipReview = !EDITOR_ENABLED && !TEXT_ENABLED;
 
   /*
     Back to the attract screen, releasing the camera with it. CameraCapture
@@ -76,6 +87,8 @@ export default function UploadPage() {
     }
     setShowCamera(false);
     await onSelect(file);
+    // Nothing to decide — carry straight on to the finished cover.
+    if (skipReview) await processPhoto(file);
   };
 
   // Throw the shot away and go back to the live preview (or to the file
@@ -85,19 +98,20 @@ export default function UploadPage() {
     if (CAMERA_ENABLED && !FILE_UPLOAD_ENABLED) setShowCamera(true);
   };
 
-  const onSubmit = async (e) => {
-    e?.preventDefault();
-    if (!file || !original) return toast.error("Please add a photo first.");
-    // Only a required field while the cover actually carries a headline.
-    if (TEXT_ENABLED && !name.trim())
-      return toast.error("Please enter the cover name.");
+  /*
+    Photo in, subject layer out, then on to the finishing step.
 
+    Takes the file as an argument rather than reading it from context because
+    the automatic path calls this immediately after the capture — before the
+    context state that `onSelect` just wrote has come back through a render.
+  */
+  const processPhoto = async (picked) => {
     setBusy(true);
     const t = toast.loading(
       BG_REMOVAL_ENABLED ? "Removing background…" : "Preparing photo…",
     );
     try {
-      const { dataUrl, processed } = await removeBackground(file);
+      const { dataUrl, processed } = await removeBackground(picked);
       const aspect = await getAspectRatio(dataUrl);
       setPerson(dataUrl, aspect, processed);
       toast.dismiss(t);
@@ -109,6 +123,15 @@ export default function UploadPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onSubmit = async (e) => {
+    e?.preventDefault();
+    if (!file || !original) return toast.error("Please add a photo first.");
+    // Only a required field while the cover actually carries a headline.
+    if (TEXT_ENABLED && !name.trim())
+      return toast.error("Please enter the cover name.");
+    await processPhoto(file);
   };
 
   /*
@@ -125,7 +148,13 @@ export default function UploadPage() {
   );
 
   useKeyBindings(
-    { accept: () => onSubmit(), retake, quit: endSession },
+    {
+      // Both are meaningless when the shot is already on its way to becoming a
+      // cover; Esc stays, so staff can always abandon a session.
+      accept: skipReview ? undefined : () => onSubmit(),
+      retake: skipReview ? undefined : retake,
+      quit: endSession,
+    },
     IMMERSIVE_KIOSK && !onAttract && hasImage && !busy,
   );
 
@@ -300,11 +329,15 @@ export default function UploadPage() {
   if (IMMERSIVE_KIOSK) {
     return (
       <KioskStage
-        hints={[
-          { keys: ["Enter"], label: busy ? "Working…" : "Use this photo" },
-          { keys: ["R"], label: "Retake" },
-          { keys: ["Esc"], label: "Cancel" },
-        ]}
+        hints={
+          skipReview
+            ? [{ keys: ["Esc"], label: "Cancel" }]
+            : [
+                { keys: ["Enter"], label: busy ? "Working…" : "Use this photo" },
+                { keys: ["R"], label: "Retake" },
+                { keys: ["Esc"], label: "Cancel" },
+              ]
+        }
       >
         <img
           src={original.dataUrl}

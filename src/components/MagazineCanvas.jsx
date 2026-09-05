@@ -18,7 +18,7 @@ import { TEXT_ENABLED } from '../config'
   editor is pixel-faithful to the exported canvas (see utils/compose.js).
 
   Layer order (back -> front):
-    1. background   (bg.png)
+    1. background   (assets/bg.*)
     2. person       (bg-removed) — draggable + resizable when interactive
     3. name text    — draggable + resizable when interactive
     4. overlay      (overlay.png, frame) — always on top, non-interactive
