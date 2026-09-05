@@ -45,7 +45,7 @@ import {
   TEXT_ENABLED,
   UPLOAD_ENABLED,
 } from '../config'
-import bgSrc from '../assets/bg.jpeg'
+import bgSrc from '../assets/bg.png'
 import overlaySrc from '../assets/overlay.png'
 
 export default function EditorPage() {
@@ -145,7 +145,13 @@ export default function EditorPage() {
       the next person — one cover per session, no extra screen to dismiss.
     */
     if (INSTANT_FINISH) {
-      saveCover(composed.blob)
+      /*
+        The guest gets the PRINT file when there is one — it is the copy that
+        goes to paper, and it is the cover whole rather than whatever the printer
+        would have cropped it to. The finale still shows composed.url, so the
+        screen keeps the display-shaped cover.
+      */
+      saveCover(composed.printBlob ?? composed.blob)
       setFinaleUrl(composed.url)
       setPhase('idle')
       return

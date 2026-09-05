@@ -5,7 +5,7 @@ export const BASE_URL = "http://127.0.0.1";
 /*
   Background-removal feature flag.
 
-  The self-hosted remover (BASE_URL:8004) is not always running. While it is
+  The self-hosted remover (BASE_URL:8004) is not always running. While it is 
   down, set this to `false`: the upload step keeps working and carries the
   original photo straight through to the editor, untouched. Flip it back to
   `true` once the service is available — the API client in
@@ -300,6 +300,57 @@ export const KEY_FINE_MULTIPLIER = 0.25;
   Set this true for a run where staff are still learning the keys.
 */
 export const KIOSK_HINTS_VISIBLE = true;
+
+/*
+  Reshape the downloaded PNG to fit the printer's paper.
+
+  The cover is cut to the DISPLAY's ratio (9:16), which is what makes the kiosk
+  full bleed. Photo paper is not that shape — 4x6 is 2:3 — so a printer handed a
+  9:16 file either crops it or shrinks it to fit, and cropping is what it does by
+  default: the logo band walks off the bottom of the print.
+
+  With this on, the file that gets downloaded is the cover placed WHOLE on a
+  canvas of the paper's ratio, so the printer has nothing left to crop. The cover
+  on screen and the cover in the gallery are untouched — this only changes the
+  file handed to the guest.
+
+  Express the ratio the way the paper sits in the printer, PORTRAIT: 4x6 photo
+  paper held upright is 2:3, and that is the same paper a driver calls "3:2" when
+  it describes the sheet in landscape. The artwork is portrait, so 2:3 is what
+  you want here. On the current 2160 x 3840 cover that yields a 2560 x 3840 file:
+  4x6 inches at 640dpi, with 200px (0.31in) of margin down each side.
+
+  PRINT_MARGIN is what fills the leftover:
+
+  · "extend" — continue the artwork's own border outward, so the print reaches
+    the paper's edge in the frame's colour and there is no white showing. This is
+    the default because a white band down each side of a full-bleed design reads
+    as a printing fault, not as a mount.
+
+  · any CSS colour — a flat mount instead ("#ffffff" for plain paper).
+
+  Note what "extend" costs, so it is a choice and not a surprise: padding only
+  the horizontal axis thickens the frame only there. The 76px side borders become
+  276px against an unchanged 133px top. The border stays the right COLOUR and the
+  artwork inside it is untouched, but the frame is no longer even on all sides.
+  That is unavoidable when paper and display disagree about shape — the only
+  alternatives are white margins or cropping the design, and this is the one that
+  looks deliberate on paper.
+
+  PRINT_EDGE_INSET is how far in from the edge the border colour is sampled, and
+  it exists because of a real failure: this overlay's outermost column is 92%
+  transparent (alpha 21 — the antialiased boundary of the frame), so extending
+  from x=0 smeared background photo down the sides instead of navy. Sampling a
+  few pixels in lands on solid border. Raise it if new artwork has a softer edge;
+  the extension is also drawn OVER those soft columns, so no seam survives.
+
+  Set PRINT_FIT_ENABLED to false to download exactly what is composed.
+*/
+export const PRINT_FIT_ENABLED = true;
+export const PRINT_RATIO_W = 2;
+export const PRINT_RATIO_H = 3;
+export const PRINT_MARGIN = "extend";
+export const PRINT_EDGE_INSET = 4;
 
 // Image gallery API (MiniStack). POST multipart/form-data, field: `Image_File`.
 export const IMAGE_API_URL = `${BASE_URL}/Ministack/Birthday/API/api.php`;

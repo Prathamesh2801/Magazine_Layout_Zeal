@@ -70,7 +70,7 @@ src/
     ui/                       Button, Card, Spinner
     layout/                   AppLayout (header/Toaster/footer), Stepper
   pages/                      UploadPage, EditorPage, ResultPage, TvPage
-  assets/                     bg.jpeg, overlay.png, fonts/ (OLD/ holds retired event art)
+  assets/                     bg.png, overlay.png, fonts/ (OLD/ holds retired event art)
 ```
 
 ### The two flows
@@ -104,7 +104,7 @@ The cover is **2160 × 3840** — 9:16, which is the kiosk panel's own resolutio
 pixel for pixel, and therefore the aspect ratio `overlay.png` must be. Four
 layers, back to front:
 
-1. background (`assets/bg.jpeg`)
+1. background (`assets/bg.png`)
 2. person (background-removed) — movable
 3. name text — movable; **omitted entirely unless `TEXT_ENABLED`**
 4. overlay frame (`assets/overlay.png`) — always on top, non-interactive
@@ -169,7 +169,7 @@ This is the common task. In order of frequency:
 
 1. **Host / endpoints** — `BASE_URL` in [config.js](src/config.js). Everything
    else derives from it. Never hardcode a URL elsewhere.
-2. **Artwork** — replace [src/assets/bg.jpeg](src/assets/bg.jpeg) and
+2. **Artwork** — replace [src/assets/bg.png](src/assets/bg.png) and
    [src/assets/overlay.png](src/assets/overlay.png), and retire the outgoing pair
    into its own folder under [src/assets/OLD/](src/assets/OLD/) — one subfolder
    per generation, keeping the original filenames, so earlier events' art stays
@@ -230,6 +230,7 @@ must keep working after any edit that touches them.**
 | `INSTANT_FINISH` | The separate `/result` page is used again: generate navigates there, offering download / keep editing / start over. With it **true** (the kiosk default) the editor finishes in place — download, hold the cover for `INSTANT_FINISH_HOLD_MS`, reset to the attract screen. |
 | `CAMERA_ENABLED` | The webcam option disappears from the upload page. |
 | `FILE_UPLOAD_ENABLED` | The "choose a file" option disappears. With the camera on and this off, the page opens straight into the live preview — the kiosk default. Turning **both** off would strand the page, so the file picker is restored as a fallback. |
+| `PRINT_FIT_ENABLED` | The downloaded PNG is exactly what was composed. With it **true**, the download is instead the cover placed whole on a canvas of the paper's ratio (`PRINT_RATIO_W`/`H`, portrait), so a printer has nothing to crop — the cover is cut to the *display's* 9:16 and photo paper is 2:3, and left alone a printer eats the logo band off the bottom. `PRINT_MARGIN` fills the leftover: `"extend"` (default) continues the artwork's border to the paper's edge, or any CSS colour gives a flat mount. Two traps in the extension, both found on real prints: the border colour must be sampled `PRINT_EDGE_INSET` pixels in, because the overlay's outermost column is 92% transparent and extending from x=0 smears background photo down the sides; and the extension must be drawn **over** the cover, not beside it, or the antialiased seam survives where the two meet. Extending does thicken the frame on the padded axis only (76px sides become 276px against a 133px top) — unavoidable when paper and display disagree about shape, and preferable to white bands on a full-bleed design. Only the guest's file changes; the screen and the gallery still get the display-shaped cover. |
 | `IMMERSIVE_KIOSK` | The ordinary windowed studio: cards on paper, a footer, buttons and sliders beside the artwork, every action reachable by tap or click. With it **true** (the kiosk default) the studio goes edge to edge and keyboard-only — see [The immersive shell](#the-immersive-shell). |
 
 When adding anything text-related, gate it on `TEXT_ENABLED` in **both**

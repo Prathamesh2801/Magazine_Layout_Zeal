@@ -1,6 +1,6 @@
 import { useHintsVisible } from '../../hooks/useHintsVisible'
 import { COVER_RATIO } from '../../utils/constants'
-import ambientDefault from '../../assets/bg.jpeg'
+import ambientDefault from '../../assets/bg.png'
 
 /*
   The full-bleed kiosk surface.
